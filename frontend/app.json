@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "Carolbeck",
-    "slug": "carolbeck",
+    "name": "MyFinance",
+    "slug": "myfinance",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "carolbeck",
+    "scheme": "myfinance",
     "userInterfaceStyle": "dark",
     "plugins": ["expo-router"],
     "experiments": {
       "typedRoutes": false
     },
     "android": {
-      "package": "com.carolbeck.finapp"
+      "package": "com.myfinance.finapp"
     },
     "ios": {
-      "bundleIdentifier": "com.carolbeck.finapp",
+      "bundleIdentifier": "com.myfinance.finapp",
       "supportsTablet": true
     }
   }

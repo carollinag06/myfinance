@@ -1,4 +1,4 @@
-# Carolbeck API
+# MyFinance API
 
 API REST para controle de finanças pessoais, construída com Node.js, Express, Sequelize e PostgreSQL.
 

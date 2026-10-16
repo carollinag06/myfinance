@@ -1,6 +1,6 @@
-# Carolbeck Mobile
+# MyFinance Mobile
 
-Aplicativo mobile Expo para o backend Carolbeck. O visual usa o tema escuro roxo do layout de referência e oferece login, cadastro, dashboard, extrato, cartões, categorias, orçamentos e faturas.
+Aplicativo mobile Expo para o backend MyFinance. O visual usa o tema escuro roxo do layout de referência e oferece login, cadastro, dashboard, extrato, cartões, categorias, orçamentos e faturas.
 
 ## Executar
 

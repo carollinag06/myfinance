@@ -17,7 +17,7 @@ interface AuthContextValue {
   atualizarUsuario: (usuario: Usuario) => Promise<void>;
 }
 
-const SESSION_KEY = 'carolbeck.session.v1';
+const SESSION_KEY = 'myfinance.session.v1';
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function readSession(): Promise<string | null> {

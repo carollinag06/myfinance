@@ -36,7 +36,7 @@ export default function LoginScreen() {
           <View style={{ width: 72, height: 72, borderRadius: 24, backgroundColor: 'rgba(138,43,226,0.22)', alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="wallet-outline" size={36} color={colors.primaryLight} />
           </View>
-          <Text style={{ color: colors.text, fontSize: 30, fontWeight: '800' }}>Carolbeck</Text>
+          <Text style={{ color: colors.text, fontSize: 30, fontWeight: '800' }}>MyFinance</Text>
           <Text style={{ color: colors.muted, fontSize: 15 }}>Seu dinheiro, mais organizado.</Text>
         </View>
 
