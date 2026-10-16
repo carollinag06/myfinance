@@ -1,0 +1,214 @@
+MYFINANCE - COMO CONFIGURAR E RODAR
+==================================
+
+PRE-REQUISITOS
+--------------
+- Node.js e npm instalados.
+- PostgreSQL instalado e iniciado.
+- Banco de dados criado, com usuario e senha validos.
+- Para acesso por celular, computador e celular na mesma rede Wi-Fi.
+
+AJUSTES FEITOS NO PROJETO
+-------------------------
+1. src/config/database.js
+   - O Sequelize agora recebe a porta pela variavel DB_PORT.
+   - Se DB_PORT nao estiver definida, usa a porta padrao 5432.
+   - A configuracao exporta diretamente a instancia do Sequelize, como os
+     modelos do projeto esperam.
+
+2. frontend/package.json e frontend/package-lock.json
+   - Front-end atualizado do Expo SDK 52 para SDK 57 para funcionar com a
+     versao atual do Expo Go.
+   - Dependencias nativas e ferramentas de desenvolvimento alinhadas ao SDK
+     57. O Expo Router atualizado tambem fornece query-string, usado pelo
+     bundle.
+
+3. database/migrations/20261016_add_usuario_to_tipo_usuario_enum.sql
+   - Adiciona ao enum do PostgreSQL o valor "usuario" usado pela API ao
+     cadastrar uma conta. Preserva os valores e registros que ja existiam.
+
+4. database/migrations/20261016_add_receita_despesa_to_transacao_enum.sql
+   - Adiciona os tipos "receita" e "despesa" usados pela API ao gravar
+     transacoes. Preserva os valores e registros que ja existiam.
+
+CONFIGURAR A API
+----------------
+Edite o arquivo .env na raiz do projeto e informe os dados do seu banco:
+
+  PORT=3000
+  DB_HOST=localhost
+  DB_PORT=6432
+  DB_NAME=nome_do_banco
+  DB_USER=usuario_do_banco
+  DB_PASS=senha_do_banco
+  JWT_SECRET=uma_chave_aleatoria_longa
+  JWT_EXPIRES_IN=7d
+
+Use DB_PORT=6432 somente se estiver usando o PgBouncer que esta escutando
+nessa porta. Se conectar diretamente ao PostgreSQL na porta padrao, use
+DB_PORT=5432. PgBouncer precisa estar configurado para encaminhar ao banco
+correto e aceitar o usuario, a senha e o nome do banco.
+
+Nao compartilhe nem publique o arquivo .env: ele contem credenciais e chaves.
+
+ATUALIZAR UM BANCO EXISTENTE
+----------------------------
+Se receber erro informando que "usuario" e invalido para
+enum_usuarios_tipo_usuario, abra o Query Tool do pgAdmin conectado ao mesmo
+banco definido no .env e execute o SQL dos arquivos em database/migrations/.
+
+As migracoes adicionam os valores "usuario", "receita" e "despesa"; nao
+apagam usuarios, transacoes nem os valores de enum que ja existiam. Execute
+as migracoes antes de cadastrar usuarios e transacoes.
+
+RODAR A API
+-----------
+Abra um PowerShell na raiz do projeto:
+
+  cd E:\baixar\myfinance-main\myfinance-main
+  npm install
+  npm start
+
+Deixe esse terminal aberto. A API deve informar que conectou ao PostgreSQL
+e que o servidor esta rodando na porta 3000.
+
+ROTAS DA API
+------------
+URL base local:
+
+  http://localhost:3000
+
+Para chamadas do celular na rede local, substitua localhost pelo IP do PC,
+por exemplo http://192.168.15.17:3000.
+
+Publicas:
+
+  GET    /health                 Verificar se a API esta ativa.
+  POST   /usuarios               Criar conta. Foto opcional via multipart/form-data.
+  POST   /usuarios/login         Entrar; retorna usuario e token JWT.
+
+Usuarios autenticados:
+
+  GET    /usuarios               Listar usuarios (somente administrador).
+  GET    /usuarios/:id           Consultar usuario (proprio usuario ou administrador).
+  PUT    /usuarios/:id           Atualizar usuario (proprio usuario ou administrador).
+  DELETE /usuarios/:id           Remover usuario (proprio usuario ou administrador).
+
+Rotas abaixo exigem token JWT de usuario autenticado:
+
+  GET    /categorias             Listar categorias do usuario.
+  POST   /categorias             Criar categoria.
+  GET    /categorias/:id         Consultar categoria.
+  PUT    /categorias/:id         Atualizar categoria.
+  DELETE /categorias/:id         Remover categoria.
+
+  GET    /cartoes                Listar cartoes do usuario.
+  POST   /cartoes                Criar cartao.
+  GET    /cartoes/:id            Consultar cartao.
+  PUT    /cartoes/:id            Atualizar cartao.
+  DELETE /cartoes/:id            Remover cartao.
+
+  GET    /transacoes             Listar transacoes do usuario.
+  POST   /transacoes             Criar transacao.
+  GET    /transacoes/:id         Consultar transacao.
+  PUT    /transacoes/:id         Atualizar transacao.
+  DELETE /transacoes/:id         Remover transacao.
+
+  GET    /orcamentos             Listar orcamentos do usuario.
+  POST   /orcamentos             Criar orcamento.
+  GET    /orcamentos/:id         Consultar orcamento.
+  PUT    /orcamentos/:id         Atualizar orcamento.
+  DELETE /orcamentos/:id         Remover orcamento.
+
+  GET    /faturas                Listar faturas do usuario.
+  POST   /faturas                Criar fatura.
+  GET    /faturas/:id            Consultar fatura.
+  PUT    /faturas/:id            Atualizar fatura.
+  DELETE /faturas/:id            Remover fatura.
+
+Para rotas autenticadas, envie o token retornado por POST /usuarios/login
+no cabecalho:
+
+  Authorization: Bearer SEU_TOKEN_JWT
+
+Nas listas, usuarios comuns recebem apenas os proprios registros.
+Administradores podem filtrar as listas com ?usuarioId=ID.
+Em rotas de item, :id e o ID do registro.
+
+Exemplo de cadastro:
+
+  POST http://localhost:3000/usuarios
+  Content-Type: application/json
+
+  {"nome":"Teste","email":"teste@example.com","senha":"SenhaSegura123"}
+
+Exemplo de login:
+
+  POST http://localhost:3000/usuarios/login
+  Content-Type: application/json
+
+  {"email":"teste@example.com","senha":"SenhaSegura123"}
+
+Exemplo de criacao de transacao (use o token do login):
+
+  POST http://localhost:3000/transacoes
+  Authorization: Bearer SEU_TOKEN_JWT
+  Content-Type: application/json
+
+  {"descricao":"Almoco","valor":35.50,"tipo":"despesa","data":"2026-10-16"}
+
+Os tipos de transacao aceitos sao "receita" e "despesa". Valores devem ser
+maiores que zero e datas devem usar AAAA-MM-DD.
+
+RODAR O APLICATIVO FRONT-END
+----------------------------
+Abra um segundo PowerShell:
+
+  cd E:\baixar\myfinance-main\myfinance-main\frontend
+  npm install
+
+O frontend/.env deve conter EXPO_PUBLIC_API_URL com o endereco da API
+acessivel pelo dispositivo:
+
+  Celular fisico na mesma rede Wi-Fi:
+    EXPO_PUBLIC_API_URL=http://192.168.15.17:3000
+
+  Emulador Android:
+    EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
+
+  Web no mesmo computador ou simulador iOS:
+    EXPO_PUBLIC_API_URL=http://localhost:3000
+
+O IP 192.168.15.17 e o endereco local observado neste computador. Se ele
+mudar, consulte ipconfig e atualize frontend/.env. Nao coloque credenciais
+do banco nesse arquivo.
+
+Inicie o Expo dentro da pasta frontend:
+
+  npx expo start
+
+Para celular fisico, leia o QR code com o Expo Go. Para emulador Android,
+pressione a no terminal do Expo. Para navegador, use:
+
+  npm run web
+
+Mantenha os dois terminais (API e Expo) abertos. Para um celular fisico,
+permita o acesso do Node.js pela rede privada no Firewall do Windows, se
+for solicitado. O celular e o computador precisam estar na mesma rede.
+
+DIAGNOSTICO RAPIDO
+------------------
+- Erro de conexao PostgreSQL: confira se o banco/PgBouncer esta iniciado,
+  DB_HOST, DB_PORT, DB_NAME, DB_USER e DB_PASS.
+- Expo Go informa incompatibilidade de SDK: confira se o frontend usa SDK 57
+  e execute npm install dentro de frontend antes de iniciar o Expo.
+- Erro "Unable to resolve query-string": execute npm install dentro de
+  frontend para instalar as dependencias declaradas no package-lock.json.
+- O Expo pede para instalar expo na raiz: confirme que o terminal esta em
+  E:\baixar\myfinance-main\myfinance-main\frontend antes de iniciar.
+- Aplicativo nao acessa a API: confirme EXPO_PUBLIC_API_URL, que a API esta
+  rodando na porta 3000 e que o firewall permite conexoes.
+- Erro ao cadastrar ou entrar: reinicie a API e consulte o terminal; os
+  controllers registram o tipo e a mensagem do erro sem imprimir a senha.
+- Nao execute npm audit fix --force sem revisar as atualizacoes: pode causar
+  mudancas incompatíveis nas dependencias.
