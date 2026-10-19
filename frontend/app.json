@@ -8,7 +8,15 @@
     "userInterfaceStyle": "dark",
     "plugins": [
       "expo-router",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permita que o MyFinance acesse suas fotos para usar uma imagem no perfil.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

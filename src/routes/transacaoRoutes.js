@@ -7,6 +7,8 @@ const router = Router();
 router.use(autenticar);
 
 router.get('/', controller.listar);
+router.post('/parceladas', controller.criarParceladas);
+router.delete('/grupos/:grupoId', controller.removerGrupoParcelado);
 router.get('/:id', controller.buscar);
 router.post('/', controller.criar);
 router.put('/:id', controller.atualizar);

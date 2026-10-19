@@ -34,6 +34,7 @@ function Navigation() {
         <Stack.Screen name="categorias" />
         <Stack.Screen name="orcamentos" />
         <Stack.Screen name="faturas" />
+        <Stack.Screen name="analises" />
         <Stack.Screen name="perfil" />
       </Stack>
     </>

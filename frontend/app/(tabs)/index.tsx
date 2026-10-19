@@ -123,6 +123,13 @@ export default function Dashboard() {
           </Panel>
         </Pressable>
       </View>
+      <Pressable onPress={() => router.push('/analises')}>
+        <Panel style={{ flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 13 }}>
+          <Ionicons name="stats-chart-outline" size={22} color={colors.primaryLight} />
+          <Text style={{ color: colors.text, flex: 1, fontWeight: '700' }}>Ver análises mensais</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </Panel>
+      </Pressable>
     </Screen>
   );
 }

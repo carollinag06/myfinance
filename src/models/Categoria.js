@@ -14,6 +14,18 @@ const Categoria = sequelize.define('Categoria', {
   descricao: {
     type: DataTypes.STRING(255),
     allowNull: true
+  },
+  tipo: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: 'despesa',
+    validate: { isIn: [['receita', 'despesa']] }
+  },
+  isPadrao: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'is_padrao'
   }
 }, {
   tableName: 'categorias',

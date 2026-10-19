@@ -31,6 +31,10 @@ AJUSTES FEITOS NO PROJETO
    - Adiciona os tipos "receita" e "despesa" usados pela API ao gravar
      transacoes. Preserva os valores e registros que ja existiam.
 
+5. database/migrations/20261019_add_analysis_and_installments.sql
+   - Adiciona tipo e indicador de categoria padrao, alem dos campos para
+     agrupar compras parceladas. Execute em bancos ja existentes.
+
 CONFIGURAR A API
 ----------------
 Edite o arquivo .env na raiz do projeto e informe os dados do seu banco:
@@ -57,9 +61,10 @@ Se receber erro informando que "usuario" e invalido para
 enum_usuarios_tipo_usuario, abra o Query Tool do pgAdmin conectado ao mesmo
 banco definido no .env e execute o SQL dos arquivos em database/migrations/.
 
-As migracoes adicionam os valores "usuario", "receita" e "despesa"; nao
-apagam usuarios, transacoes nem os valores de enum que ja existiam. Execute
-as migracoes antes de cadastrar usuarios e transacoes.
+As migracoes adicionam os valores "usuario", "receita" e "despesa" e os
+novos campos de categorias e parcelas; nao apagam usuarios, transacoes nem
+os valores de enum que ja existiam. Execute todas as migracoes antes de
+iniciar a API.
 
 RODAR A API
 -----------
@@ -110,6 +115,8 @@ Rotas abaixo exigem token JWT de usuario autenticado:
 
   GET    /transacoes             Listar transacoes do usuario.
   POST   /transacoes             Criar transacao.
+  POST   /transacoes/parceladas  Criar compra parcelada (2 a 48 parcelas).
+  DELETE /transacoes/grupos/:grupoId  Excluir todas as parcelas do grupo.
   GET    /transacoes/:id         Consultar transacao.
   PUT    /transacoes/:id         Atualizar transacao.
   DELETE /transacoes/:id         Remover transacao.

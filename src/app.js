@@ -19,7 +19,11 @@ app.use((req, res, next) => {
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+  dotfiles: 'deny',
+  index: false,
+  setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff')
+}));
 
 app.use('/usuarios', usuarioRoutes);
 app.use('/categorias', categoriaRoutes);

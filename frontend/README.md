@@ -1,6 +1,6 @@
 # MyFinance Mobile
 
-Aplicativo mobile Expo para o backend MyFinance. O visual usa o tema escuro roxo do layout de referência e oferece login, cadastro, dashboard, extrato, cartões, categorias, orçamentos e faturas.
+Aplicativo mobile Expo para o backend MyFinance. Oferece login, dashboard, análises mensais, extrato com busca e filtros, transações parceladas, cartões, categorias padrão e personalizadas, metas/orçamentos e faturas.
 
 ## Executar
 
@@ -13,7 +13,9 @@ O emulador Android normalmente acessa o computador pelo endereço http://10.0.2.
 
 ## API usada
 
-O app consome POST /usuarios, POST /usuarios/login, GET e PUT /usuarios/:id e as rotas de CRUD de /transacoes, /cartoes, /categorias, /orcamentos e /faturas. As chamadas autenticadas enviam Authorization: Bearer <token>.
+O app consome POST /usuarios, POST /usuarios/login, GET e PUT /usuarios/:id, POST /transacoes/parceladas e as rotas de CRUD de /transacoes, /cartoes, /categorias, /orcamentos e /faturas. As chamadas autenticadas enviam Authorization: Bearer <token>.
+
+Em bancos já existentes, aplique todos os arquivos de `database/migrations/` antes de iniciar a API. A migração `20261019_add_analysis_and_installments.sql` adiciona os tipos e indicadores de categoria e os campos usados para agrupar parcelas.
 
 As respostas e requisições usam os nomes do backend, como nome, valor, tipo, categoriaId e cartaoId. O app não coleta o número completo do cartão.
 

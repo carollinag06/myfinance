@@ -44,6 +44,23 @@ const Transacao = sequelize.define('Transacao', {
         }
       }
     }
+  },
+  grupoParcelamento: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    field: 'grupo_parcelamento'
+  },
+  numeroParcela: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'numero_parcela',
+    validate: { min: 1 }
+  },
+  totalParcelas: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'total_parcelas',
+    validate: { min: 2, max: 48 }
   }
 }, {
   tableName: 'transacoes',

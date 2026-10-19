@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { Field, InlineNotice, PrimaryButton, Screen } from '../../src/ui';
+import { PasswordField } from '../../src/PasswordField';
 import { useAuth } from '../../src/session';
 import { colors } from '../../src/theme';
 
@@ -25,9 +26,13 @@ export default function LoginScreen() {
   async function submit() {
     if (loading) return;
     setError('');
-    const emailLimpo = email.trim();
+    const emailLimpo = email.trim().toLowerCase();
     if (!emailLimpo || !senha) {
       setError('Informe seu e-mail e sua senha.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpo)) {
+      setError('Confira o formato do e-mail.');
       return;
     }
     setLoading(true);
@@ -64,23 +69,25 @@ export default function LoginScreen() {
             <View style={styles.form}>
               <Field
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(value) => { setEmail(value); setError(''); }}
                 placeholder="E-mail"
+                accessibilityLabel="E-mail"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="email"
                 textContentType="emailAddress"
+                maxLength={150}
                 returnKeyType="next"
                 blurOnSubmit={false}
                 onSubmitEditing={() => senhaRef.current?.focus()}
               />
-              <Field
+              <PasswordField
                 ref={senhaRef}
                 value={senha}
-                onChangeText={setSenha}
+                onChangeText={(value) => { setSenha(value); setError(''); }}
                 placeholder="Senha"
-                secureTextEntry
+                accessibilityLabel="Senha"
                 autoCapitalize="none"
                 autoComplete="password"
                 textContentType="password"

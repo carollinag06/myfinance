@@ -10,6 +10,8 @@ export interface Categoria {
   id: number;
   nome: string;
   descricao?: string | null;
+  tipo: 'receita' | 'despesa';
+  isPadrao?: boolean;
   usuarioId: number;
 }
 
@@ -32,6 +34,9 @@ export interface Transacao {
   cartaoId?: number | null;
   categoria?: Categoria | null;
   cartao?: Cartao | null;
+  grupoParcelamento?: string | null;
+  numeroParcela?: number | null;
+  totalParcelas?: number | null;
 }
 
 export interface Orcamento {
@@ -85,10 +90,31 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
   return payload as T;
 }
 
+async function requestMultipart<T>(path: string, method: string, body: FormData): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (accessToken) headers.Authorization = 'Bearer ' + accessToken;
+
+  let response: Response;
+  try {
+    response = await fetch(API_URL + path, { method, headers, body });
+  } catch {
+    throw new Error('Não foi possível conectar à API. Confira o endereço configurado e se o backend está ligado.');
+  }
+
+  if (response.status === 204) return undefined as T;
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = typeof payload?.error === 'string' ? payload.error : 'A solicitação não foi concluída.';
+    throw new Error(message);
+  }
+  return payload as T;
+}
+
 export const api = {
   get: <T,>(path: string) => request<T>(path),
   post: <T,>(path: string, body: unknown) => request<T>(path, 'POST', body),
   put: <T,>(path: string, body: unknown) => request<T>(path, 'PUT', body),
+  putMultipart: <T,>(path: string, body: FormData) => requestMultipart<T>(path, 'PUT', body),
   delete: <T,>(path: string) => request<T>(path, 'DELETE'),
   login: (email: string, senha: string) =>
     request<{ usuario: Usuario; token: string }>('/usuarios/login', 'POST', { email, senha }),
@@ -98,6 +124,10 @@ export const api = {
 
 export function apiBaseUrl() {
   return API_URL;
+}
+
+export function fotoUsuarioUrl(foto?: string | null) {
+  return foto ? `${API_URL}/uploads/${encodeURIComponent(foto)}` : null;
 }
 
 export function toAmount(value: number | string | null | undefined): number {
