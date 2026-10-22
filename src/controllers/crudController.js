@@ -1,4 +1,4 @@
-const createCrudController = ({ model, resourceName, fields, include = [], ownershipRelations = [] }) => {
+const createCrudController = ({ model, resourceName, fields, include = [], ownershipRelations = [], preparePayload = (payload) => payload }) => {
   const getPayload = (body) => Object.fromEntries(
     Object.entries(body || {}).filter(([key, value]) => fields.includes(key) && value !== undefined)
   );
@@ -98,7 +98,7 @@ const createCrudController = ({ model, resourceName, fields, include = [], owner
 
   const criar = async (req, res) => {
     try {
-      const payload = getPayload(req.body);
+      const payload = preparePayload(getPayload(req.body), null);
 
       if (fields.includes('usuarioId') && !isAdmin(req)) {
         payload.usuarioId = req.usuario.id;

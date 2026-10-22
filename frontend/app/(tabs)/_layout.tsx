@@ -9,6 +9,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        animation: 'fade',
+        transitionSpec: {
+          animation: 'timing',
+          config: { duration: 180 },
+        },
         tabBarActiveTintColor: colors.primaryLight,
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {
@@ -37,7 +42,8 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="cartoes" options={{ title: 'Cartões', tabBarIcon: ({ color, size }) => <Ionicons name="card-outline" size={size} color={color} /> }} />
+      <Tabs.Screen name="analises" options={{ title: 'Análises', tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart-outline" size={size} color={color} /> }} />
+      <Tabs.Screen name="cartoes" options={{ href: null }} />
       <Tabs.Screen name="mais" options={{ title: 'Mais', tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} /> }} />
     </Tabs>
   );

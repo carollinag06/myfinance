@@ -62,19 +62,21 @@ export function PrimaryButton({
   loading = false,
   disabled = false,
   icon,
+  tone = 'primary',
 }: {
   label: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
+  tone?: 'primary' | 'danger';
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       disabled={disabled || loading}
-      style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, (disabled || loading) && styles.disabled]}
+      style={({ pressed }) => [styles.primaryButton, tone === 'danger' && { backgroundColor: '#B42332' }, pressed && styles.pressed, (disabled || loading) && styles.disabled]}
     >
       {loading ? <ActivityIndicator color={colors.text} /> : (
         <>
@@ -95,9 +97,9 @@ export function SectionTitle({ children, action }: { children: React.ReactNode; 
   );
 }
 
-export function InlineNotice({ children, tone = 'error' }: { children: React.ReactNode; tone?: 'error' | 'info' }) {
+export function InlineNotice({ children, tone = 'error' }: { children: React.ReactNode; tone?: 'error' | 'info' | 'success' }) {
   return (
-    <View style={[styles.notice, tone === 'error' ? styles.noticeError : styles.noticeInfo]}>
+    <View style={[styles.notice, tone === 'error' ? styles.noticeError : tone === 'success' ? { backgroundColor: colors.successSoft } : styles.noticeInfo]}>
       <Text style={styles.noticeText}>{children}</Text>
     </View>
   );

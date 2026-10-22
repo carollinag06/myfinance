@@ -1,15 +1,18 @@
+import { confirmAction, showSuccess } from '../src/feedback';
+import { isRealized } from '../src/transactions';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, Text, View, type DimensionValue } from 'react-native';
+import { Pressable, Text, View, type DimensionValue } from 'react-native';
 import { api, Categoria, Orcamento, toAmount, Transacao } from '../src/api';
 import { colors } from '../src/theme';
-import { Field, InlineNotice, Panel, PrimaryButton, Screen } from '../src/ui';
+import { Field, InlineNotice, LoadingState, Panel, PrimaryButton, Screen } from '../src/ui';
 
 const currency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export default function BudgetsScreen() {
   const now = new Date();
+  const [fetching, setFetching] = useState(true);
   const [items, setItems] = useState<Orcamento[]>([]);
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [transactions, setTransactions] = useState<Transacao[]>([]);
@@ -24,6 +27,7 @@ export default function BudgetsScreen() {
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
+    setFetching(true);
     try {
       const [budgetList, categoryList, transactionList] = await Promise.all([
         api.get<Orcamento[]>('/orcamentos'),
@@ -36,14 +40,15 @@ export default function BudgetsScreen() {
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível carregar os orçamentos.');
-    }
+    } finally { setFetching(false); }
+
   }, []);
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   const viewMonthKey = `${viewYear}-${String(viewMonth).padStart(2, '0')}`;
   const monthlyBudgets = items.filter((item) => item.ano === viewYear && item.mes === viewMonth);
-  const monthlyExpenses = transactions.filter((item) => item.tipo === 'despesa' && item.data.slice(0, 7) === viewMonthKey);
+  const monthlyExpenses = transactions.filter((item) => isRealized(item) && item.tipo === 'despesa' && item.data.slice(0, 7) === viewMonthKey);
   const spendForBudget = (item: Orcamento) => monthlyExpenses
     .filter((transaction) => !item.categoriaId || transaction.categoriaId === item.categoriaId)
     .reduce((sum, transaction) => sum + toAmount(transaction.valor), 0);
@@ -80,6 +85,7 @@ export default function BudgetsScreen() {
   }
 
   async function add() {
+    if (loading) return;
     const value = Number(amount.trim().replace(',', '.'));
     const m = Number(month);
     const y = Number(year);
@@ -94,6 +100,7 @@ export default function BudgetsScreen() {
       setAmount('');
       setShowForm(false);
       await load();
+      showSuccess('Orçamento cadastrado.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível salvar o orçamento.');
     } finally {
@@ -102,22 +109,18 @@ export default function BudgetsScreen() {
   }
 
   function remove(item: Orcamento) {
-    Alert.alert('Excluir orçamento', 'Deseja remover este orçamento?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
-        try {
-          await api.delete('/orcamentos/' + item.id);
-          setItems((current) => current.filter((budget) => budget.id !== item.id));
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Não foi possível excluir o orçamento.');
-        }
-      } },
-    ]);
+    confirmAction('Excluir orçamento', 'Deseja excluir este registro? Esta ação não pode ser desfeita.', [{
+      label: 'Excluir', destructive: true, run: async () => {
+        await api.delete('/orcamentos/' + item.id);
+        setItems(current => current.filter(budget => budget.id !== item.id));
+        showSuccess('Orçamento excluído.');
+      },
+    }]);
   }
 
   return (
     <Screen title="Metas e orçamentos" subtitle="Acompanhe limites mensais por categoria.">
-      <PrimaryButton label={showForm ? 'Fechar formulário' : 'Nova meta'} icon={showForm ? 'close' : 'add'} onPress={() => {
+      <PrimaryButton disabled={loading} label={showForm ? 'Fechar formulário' : 'Nova meta'} icon={showForm ? 'close' : 'add'} onPress={() => {
         if (!showForm) {
           setMonth(String(viewMonth));
           setYear(String(viewYear));
@@ -150,12 +153,13 @@ export default function BudgetsScreen() {
           <PrimaryButton label="Salvar orçamento" onPress={add} loading={loading} />
         </Panel>
       ) : null}
+      {fetching ? <LoadingState label="Carregando..." /> : null}
       {error ? <InlineNotice>{error}</InlineNotice> : null}
       {monthlyBudgets.length > 0 ? (
         <Panel style={{ backgroundColor: 'rgba(138,43,226,0.12)' }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
             <View><Text style={{ color: colors.muted, fontSize: 12 }}>Total de metas</Text><Text style={{ color: colors.text, fontSize: 19, fontWeight: '800' }}>{currency(totalBudgeted)}</Text></View>
-            <View style={{ alignItems: 'flex-end' }}><Text style={{ color: colors.muted, fontSize: 12 }}>Gasto considerado</Text><Text style={{ color: totalBudgetedSpend > totalBudgeted ? colors.danger : colors.text, fontSize: 19, fontWeight: '800' }}>{currency(totalBudgetedSpend)}</Text></View>
+            <View style={{ alignItems: 'flex-end' }}><Text style={{ color: colors.muted, fontSize: 12 }}>Gasto realizado</Text><Text style={{ color: totalBudgetedSpend > totalBudgeted ? colors.danger : colors.text, fontSize: 19, fontWeight: '800' }}>{currency(totalBudgetedSpend)}</Text></View>
           </View>
           {dailyAllowance > 0 ? <Text style={{ color: colors.primaryLight, fontSize: 12 }}>Para manter as metas, restam cerca de {currency(dailyAllowance)} por dia neste mês.</Text> : null}
         </Panel>
@@ -197,7 +201,7 @@ export default function BudgetsScreen() {
           </Panel>
         );
       })}
-      {monthlyBudgets.length === 0 && !showForm ? <Panel><Text style={{ color: colors.muted, textAlign: 'center' }}>Nenhuma meta cadastrada para este mês.</Text></Panel> : null}
+      {!fetching && !error && monthlyBudgets.length === 0 && !showForm ? <Panel><Text style={{ color: colors.muted, textAlign: 'center' }}>Nenhuma meta cadastrada para este mês.</Text></Panel> : null}
     </Screen>
   );
 }

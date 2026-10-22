@@ -1,6 +1,6 @@
+import { confirmAction, showSuccess } from '../src/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 import { api, Cartao, toAmount } from '../src/api';
 import { Field, InlineNotice, PrimaryButton, Screen } from '../src/ui';
 
@@ -29,6 +29,7 @@ export default function NewCardScreen() {
   }, [id]);
 
   async function save() {
+    if (loading) return;
     setError('');
     const value = Number(limit.trim().replace(',', '.'));
     const day = dueDay.trim() ? Number(dueDay) : null;
@@ -46,6 +47,7 @@ export default function NewCardScreen() {
       const body = { nome: name.trim(), limite: value, vencimento: day };
       if (id) await api.put('/cartoes/' + id, body);
       else await api.post('/cartoes', body);
+      showSuccess(id ? 'Cartão atualizado.' : 'Cartão cadastrado.');
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível salvar o cartão.');
@@ -56,17 +58,10 @@ export default function NewCardScreen() {
 
   function remove() {
     if (!id) return;
-    Alert.alert('Excluir cartão', 'Os lançamentos associados continuarão registrados.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
-        try {
-          await api.delete('/cartoes/' + id);
-          router.back();
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Não foi possível excluir o cartão.');
-        }
-      } },
-    ]);
+    confirmAction('Excluir cartão', 'Os lançamentos associados continuarão registrados. Esta ação não pode ser desfeita.', [{ label: 'Excluir', destructive: true, run: async () => {
+      await api.delete('/cartoes/' + id);
+      showSuccess('Cartão excluído.'); router.back();
+    } }]);
   }
 
   return (

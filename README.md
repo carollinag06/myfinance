@@ -41,7 +41,7 @@ API REST para controle de finanças pessoais, construída com Node.js, Express, 
    npm start
    ~~~
 
-Na inicialização, a aplicação autentica no PostgreSQL e sincroniza os modelos do Sequelize. O endpoint GET /health retorna {"status":"ok"} quando o servidor está disponível.
+Na inicialização, a aplicação autentica no PostgreSQL, sincroniza os modelos do Sequelize e aplica a migração aditiva de situação das transações (`20261022_add_transaction_status.sql`). Em bancos existentes, lançamentos antigos até a data atual são classificados como realizados; os futuros, como previstos. A migração pode ser reexecutada sem sobrescrever as situações escolhidas. O endpoint GET /health retorna {"status":"ok"} quando o servidor está disponível.
 
 ## Autenticação
 
@@ -89,7 +89,7 @@ As listagens podem ser filtradas por usuarioId quando chamadas por um administra
 
 ## Observações
 
-O package.json ainda não define uma suíte de testes; o script npm test é apenas um marcador.
+Execute `npm test` na raiz para verificar a API. No frontend, execute `npm run typecheck` e `npm test -- --watch=false`.
 
 ## Aplicativo mobile
 
@@ -100,3 +100,20 @@ O front end Expo fica em `frontend/`. Consulte `frontend/README.md` para a confi
 3. Rode `npx expo start` dentro de `frontend/`.
 
 O aplicativo inclui login e cadastro, resumo financeiro, análises mensais, extrato com busca e filtros, lançamentos parcelados, cartões, categorias padrão, metas/orçamentos e faturas.
+
+## Situação e edição de transações
+
+- `status` aceita `previsto` ou `realizado`. Novas requisições da API sem esse campo usam `previsto`.
+- No aplicativo, uma transação de hoje começa como realizada; ao escolher uma data futura, passa para prevista. É possível registrar uma pendência em uma data passada.
+- O saldo disponível acumula apenas receitas recebidas e despesas pagas até hoje. O painel também mostra o que falta receber e pagar no mês. Orçamentos consideram despesas realizadas.
+- Extrato e análises permitem filtrar previstos e realizados. A opção Todos nas análises é uma projeção, incluindo os dois estados.
+- Para antecipar um lançamento futuro no extrato, o aplicativo confirma a ação e troca sua data para hoje.
+- O botão de edição no extrato permite corrigir descrição, valor, tipo, data, categoria, cartão e situação. Em parcelamentos, a edição é individual; não redistribui os valores das demais parcelas.
+- Ao criar uma compra parcelada, apenas a primeira parcela pode começar como realizada; as outras ficam previstas.
+- Exclusões de transações, categorias, cartões, faturas e orçamentos usam uma confirmação compartilhada com cancelamento, processamento e tentativa novamente em caso de erro.
+
+## Forma de pagamento das despesas
+
+No cadastro e na edição, escolha À vista ou Cartão. Cartão pode ser usado sem um cartão cadastrado; vincular um cartão específico é opcional. Receitas não exibem essa seleção. O extrato mostra a forma e o nome do cartão, quando disponível.
+
+O campo formaPagamento aceita a_vista ou cartao para despesas e é nulo em receitas. Clientes antigos que enviam somente cartaoId continuam compatíveis. A migração 20261022_add_payment_method.sql é aplicada na inicialização; registros existentes com cartão são classificados como cartão, e despesas sem cartão como à vista. A forma registrada é mantida mesmo se o cartão for removido posteriormente.

@@ -8,7 +8,7 @@ import { colors } from '../../src/theme';
 import { Panel, Screen } from '../../src/ui';
 
 const links = [
-  { title: 'Análises', subtitle: 'Acompanhe tendências e gastos por categoria', icon: 'stats-chart-outline' as const, path: '/analises' as const },
+  { title: 'Cartões', subtitle: 'Gerencie seus cartões e limites', icon: 'card-outline' as const, path: '/(tabs)/cartoes' as const },
   { title: 'Categorias', subtitle: 'Organize suas movimentações', icon: 'pricetag-outline' as const, path: '/categorias' as const },
   { title: 'Metas e orçamentos', subtitle: 'Defina limites e acompanhe seu progresso', icon: 'pie-chart-outline' as const, path: '/orcamentos' as const },
   { title: 'Faturas', subtitle: 'Veja vencimentos e pagamentos', icon: 'receipt-outline' as const, path: '/faturas' as const },

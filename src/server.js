@@ -12,6 +12,12 @@ async function iniciarServidor() {
     console.log('Conexão com o PostgreSQL realizada com sucesso.');
 
     await sequelize.sync();
+    // Atualizacao aditiva para bancos que ja existiam antes do campo status.
+    const fs = require('fs');
+    const path = require('path');
+    await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261022_add_transaction_status.sql'), 'utf8'));
+
+    await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261022_add_payment_method.sql'), 'utf8'));
 
     server = app.listen(PORT);
     await new Promise((resolve, reject) => {

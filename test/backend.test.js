@@ -218,7 +218,7 @@ test('installment creation splits cents exactly and preserves the requested mont
   t.after(stub(sequelize, 'transaction', async (callback) => callback({ testTransaction: true })));
   t.after(stub(Transacao, 'bulkCreate', async (rows, options) => {
     savedRows = rows;
-    assert.deepEqual(options, { transaction: { testTransaction: true }, returning: true });
+    assert.deepEqual(options, { transaction: { testTransaction: true }, returning: true, validate: true });
     return rows.map((row, index) => ({ id: index + 1, ...row }));
   }));
 
@@ -271,4 +271,80 @@ test('default category setup creates missing entries and promotes existing match
   createdRows = [];
   await ensureDefaultCategories(user.id);
   assert.equal(createdRows.length, 0);
+});
+
+test('transaction status defaults to planned and rejects unknown or future realized states', async () => {
+  const base = { descricao: 'Validacao', valor: 10, tipo: 'despesa', data: '2024-01-01' };
+  assert.equal(Transacao.build(base).status, 'previsto');
+  await Transacao.build({ ...base, status: 'realizado' }).validate();
+  await assert.rejects(Transacao.build({ ...base, status: 'invalido' }).validate(), /Validation/);
+  await assert.rejects(Transacao.build({ ...base, data: '9999-01-01', status: 'realizado' }).validate(), /futuro/);
+  await Transacao.build({ ...base, data: '9999-01-01', status: 'previsto' }).validate();
+});
+
+test('transaction editing accepts status and editable fields without changing installment metadata or owner', async (t) => {
+  const values = { id: 44, usuarioId: user.id, grupoParcelamento: 'grupo-preservado', numeroParcela: 2, totalParcelas: 3, toJSON() { return { ...this }; } };
+  let updated;
+  t.after(stub(Transacao, 'findByPk', async () => values));
+  t.after(stub(values, 'update', async function(payload) { updated = payload; Object.assign(this,payload); }));
+  const response = await request(app).put('/transacoes/44').set(auth).send({ descricao: 'Corrigida', valor: 22, data: '2024-01-02', status: 'realizado', grupoParcelamento: 'forjado', totalParcelas: 48, usuarioId: 999 });
+  assert.equal(response.status, 200);
+  assert.deepEqual(updated, { descricao: 'Corrigida', valor: 22, data: '2024-01-02', status: 'realizado' });
+  assert.equal(values.grupoParcelamento, 'grupo-preservado');
+  assert.equal(values.numeroParcela, 2);
+  assert.equal(values.totalParcelas, 3);
+  assert.equal(values.usuarioId, user.id);
+});
+
+test('installments realize only the first installment when requested', async (t) => {
+  let rows;
+  t.after(stub(sequelize, 'transaction', async cb => cb({})));
+  t.after(stub(Transacao, 'bulkCreate', async (items, options) => { rows = items; assert.equal(options.validate, true); return items; }));
+  const response = await request(app).post('/transacoes/parceladas').set(auth).send({ descricao: 'Notebook', valor: 100, tipo: 'despesa', data: '2024-01-01', status: 'realizado', totalParcelas: 3 });
+  assert.equal(response.status, 201);
+  assert.deepEqual(rows.map(item => item.status), ['realizado', 'previsto', 'previsto']);
+});
+
+test('status updates preserve authorization and reject other users', async (t) => {
+  let written = false;
+  t.after(stub(Transacao, 'findByPk', async () => ({ id: 1, usuarioId: 999, update: async () => { written = true; } })));
+  const response = await request(app).put('/transacoes/1').set(auth).send({ status: 'realizado' });
+  assert.equal(response.status, 403);
+  assert.equal(written, false);
+});
+
+test('payment methods are validated and removed cards do not erase historical method', async () => {
+  const base = { descricao: 'Compra', valor: 10, tipo: 'despesa', data: '2024-01-01', status: 'previsto' };
+  const cash = Transacao.build(base);
+  await cash.validate();
+  assert.equal(cash.formaPagamento, 'a_vista');
+  await Transacao.build({ ...base, formaPagamento: 'cartao' }).validate();
+  await assert.rejects(Transacao.build({ ...base, formaPagamento: 'a_vista', cartaoId: 3 }).validate(), /não devem ter cartão/);
+  await Transacao.build({ ...base, formaPagamento: 'cartao', cartaoId: 3 }).validate();
+  const historical = Transacao.build({ ...base, formaPagamento: 'cartao', cartaoId: null }, { isNewRecord: false, raw: true });
+  historical.changed(false);
+  historical.status = 'realizado';
+  await historical.validate();
+  assert.equal(historical.formaPagamento, 'cartao');
+});
+
+test('payment method is persisted by the API and legacy card-only requests infer it', async (t) => {
+  let created;
+  t.after(stub(Cartao, 'findByPk', async () => ({ id: 3, usuarioId: user.id })));
+  t.after(stub(Transacao, 'create', async payload => { created = payload; return payload; }));
+  let response = await request(app).post('/transacoes').set(auth).send({ descricao:'Compra',valor:10,tipo:'despesa',data:'2024-01-01',cartaoId:3 });
+  assert.equal(response.status, 201);
+  assert.equal(created.formaPagamento,'cartao');
+  response = await request(app).post('/transacoes').set(auth).send({ descricao:'Compra',valor:10,tipo:'despesa',data:'2024-01-01',formaPagamento:'a_vista',cartaoId:null });
+  assert.equal(response.status, 201);
+  assert.equal(created.formaPagamento,'a_vista');
+});
+
+test('card installments allow an unspecified card and persist the payment method', async (t) => {
+  let rows;
+  t.after(stub(sequelize, 'transaction', async cb => cb({})));
+  t.after(stub(Transacao, 'bulkCreate', async items => { rows = items; return items; }));
+  const response = await request(app).post('/transacoes/parceladas').set(auth).send({descricao:'Compra sem vinculo',valor:100,tipo:'despesa',data:'2024-01-01',formaPagamento:'cartao',totalParcelas:3});
+  assert.equal(response.status,201);
+  assert.ok(rows.every(row => row.formaPagamento === 'cartao' && row.cartaoId === null));
 });

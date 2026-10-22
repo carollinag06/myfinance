@@ -45,6 +45,18 @@ const Transacao = sequelize.define('Transacao', {
       }
     }
   },
+  status: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+    defaultValue: 'previsto',
+    validate: { isIn: [['previsto', 'realizado']] }
+  },
+  formaPagamento: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    field: 'forma_pagamento',
+    validate: { isIn: [['a_vista', 'cartao']] }
+  },
   grupoParcelamento: {
     type: DataTypes.UUID,
     allowNull: true,
@@ -63,6 +75,27 @@ const Transacao = sequelize.define('Transacao', {
     validate: { min: 2, max: 48 }
   }
 }, {
+  hooks: {
+    beforeValidate(instance) {
+      if (instance.tipo === 'receita') { instance.formaPagamento = null; instance.cartaoId = null; }
+      else if (instance.tipo === 'despesa' && instance.formaPagamento == null) {
+        instance.formaPagamento = instance.cartaoId != null ? 'cartao' : 'a_vista';
+      }
+    }
+  },
+  validate: {
+    pagamentoCompativel() {
+      if (this.tipo !== 'despesa') return;
+      if (this.formaPagamento === 'a_vista' && this.cartaoId != null) throw new Error('Despesas à vista não devem ter cartão associado.');
+    },
+    realizadoSemDataFutura() {
+      const hoje = new Date();
+      const hojeISO = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0');
+      if (this.status === 'realizado' && this.data > hojeISO) {
+        throw new Error('Um lançamento futuro deve ficar previsto. Para antecipar, use a data do pagamento ou recebimento.');
+      }
+    }
+  },
   tableName: 'transacoes',
   freezeTableName: true,
   timestamps: true,

@@ -1,3 +1,4 @@
+import { FeedbackHost } from '../src/feedback';
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
 import { Stack, router, useRootNavigationState, useSegments } from 'expo-router';
@@ -34,7 +35,6 @@ function Navigation() {
         <Stack.Screen name="categorias" />
         <Stack.Screen name="orcamentos" />
         <Stack.Screen name="faturas" />
-        <Stack.Screen name="analises" />
         <Stack.Screen name="perfil" />
       </Stack>
     </>
@@ -45,6 +45,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <Navigation />
+      <FeedbackHost />
     </AuthProvider>
   );
 }

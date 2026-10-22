@@ -1,12 +1,14 @@
+import { confirmAction, showSuccess } from '../src/feedback';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { api, Categoria } from '../src/api';
 import { Field, InlineNotice, LoadingState, Panel, PrimaryButton, Screen } from '../src/ui';
 import { colors } from '../src/theme';
 
 export default function CategoriesScreen() {
+  const [fetching, setFetching] = useState(true);
   const [items, setItems] = useState<Categoria[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -16,17 +18,20 @@ export default function CategoriesScreen() {
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
+    setFetching(true);
     try {
       setItems(await api.get<Categoria[]>('/categorias'));
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível carregar as categorias.');
-    }
+    } finally { setFetching(false); }
+
   }, []);
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   async function add() {
+    if (loading) return;
     if (!name.trim()) {
       setError('Informe o nome da categoria.');
       return;
@@ -40,6 +45,7 @@ export default function CategoriesScreen() {
       setType('despesa');
       setShowForm(false);
       await load();
+      showSuccess('Categoria cadastrada.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível salvar a categoria.');
     } finally {
@@ -48,22 +54,18 @@ export default function CategoriesScreen() {
   }
 
   function remove(item: Categoria) {
-    Alert.alert('Excluir categoria', 'Deseja excluir “' + item.nome + '”?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
-        try {
-          await api.delete('/categorias/' + item.id);
-          setItems((current) => current.filter((category) => category.id !== item.id));
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Não foi possível excluir.');
-        }
-      } },
-    ]);
+    confirmAction('Excluir categoria', 'Deseja excluir “' + item.nome + '”? Esta ação não pode ser desfeita.', [{
+      label: 'Excluir', destructive: true, run: async () => {
+        await api.delete('/categorias/' + item.id);
+        setItems(current => current.filter(category => category.id !== item.id));
+        showSuccess('Categoria excluída.');
+      },
+    }]);
   }
 
   return (
     <Screen title="Categorias" subtitle="Organize os lançamentos por tipo de gasto ou receita.">
-      <PrimaryButton label={showForm ? 'Fechar formulário' : 'Nova categoria'} icon={showForm ? 'close' : 'add'} onPress={() => setShowForm(!showForm)} />
+      <PrimaryButton disabled={loading} label={showForm ? 'Fechar formulário' : 'Nova categoria'} icon={showForm ? 'close' : 'add'} onPress={() => setShowForm(!showForm)} />
       {showForm ? (
         <Panel>
           <Text style={{ color: colors.text, fontWeight: '700' }}>Tipo</Text>
@@ -79,8 +81,9 @@ export default function CategoriesScreen() {
           <PrimaryButton label="Salvar categoria" onPress={add} loading={loading} />
         </Panel>
       ) : null}
+      {fetching ? <LoadingState label="Carregando..." /> : null}
       {error ? <InlineNotice>{error}</InlineNotice> : null}
-      {items.length === 0 ? <Panel><Text style={{ color: colors.muted, textAlign: 'center' }}>Nenhuma categoria cadastrada.</Text></Panel> : null}
+      {!fetching && !error && items.length === 0 ? <Panel><Text style={{ color: colors.muted, textAlign: 'center' }}>Nenhuma categoria cadastrada.</Text></Panel> : null}
       {items.map((item) => (
         <Panel key={item.id} style={{ padding: 13 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>

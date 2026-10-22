@@ -1,6 +1,11 @@
+import { subscribeTransactions } from '../../src/transactionEvents';
+import { newestCreatedFirst } from '../../src/transactions';
+import { paymentLabel } from '../../src/transactions';
+import { isRealized, statusLabel } from '../../src/transactions';
+import { formatDateBR } from '../../src/date';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, router } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { api, Cartao, Orcamento, toAmount, Transacao } from '../../src/api';
 import { EmptyState, InlineNotice, LoadingState, Panel, Screen, SectionTitle } from '../../src/ui';
@@ -8,12 +13,10 @@ import { useAuth } from '../../src/session';
 import { colors } from '../../src/theme';
 
 const currency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-const dateLabel = (value: string) => {
-  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
-  return Number.isFinite(day) ? new Date(year, month - 1, day).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : value;
-};
+const dateLabel = formatDateBR;
 
 export default function Dashboard() {
+  const requestVersion = useRef(0);
   const { usuario } = useAuth();
   const [transactions, setTransactions] = useState<Transacao[]>([]);
   const [cards, setCards] = useState<Cartao[]>([]);
@@ -22,33 +25,37 @@ export default function Dashboard() {
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
     setError('');
-    try {
-      const [tx, cardList, budgetList] = await Promise.all([
-        api.get<Transacao[]>('/transacoes'),
-        api.get<Cartao[]>('/cartoes'),
-        api.get<Orcamento[]>('/orcamentos'),
-      ]);
-      setTransactions(tx);
-      setCards(cardList);
-      setBudgets(budgetList);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Não foi possível carregar os dados.');
-    } finally {
-      setLoading(false);
-    }
+    const results = await Promise.allSettled([
+      api.get<Transacao[]>('/transacoes'),
+      api.get<Cartao[]>('/cartoes'),
+      api.get<Orcamento[]>('/orcamentos'),
+    ]);
+    if (version !== requestVersion.current) return;
+    const [tx, cardList, budgetList] = results;
+    if (tx.status === 'fulfilled') setTransactions(tx.value);
+    else setError(tx.reason instanceof Error ? tx.reason.message : 'Não foi possível carregar os lançamentos.');
+    if (cardList.status === 'fulfilled') setCards(cardList.value);
+    if (budgetList.status === 'fulfilled') setBudgets(budgetList.value);
+    setLoading(false);
   }, []);
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
+  useEffect(() => subscribeTransactions(() => { void load(); }), [load]);
+  useEffect(() => () => { requestVersion.current += 1; }, []);
 
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const year = String(now.getFullYear());
   const current = transactions.filter((t) => t.data.slice(0, 7) === year + '-' + month);
-  const income = current.filter((t) => t.tipo === 'receita').reduce((sum, t) => sum + toAmount(t.valor), 0);
-  const expense = current.filter((t) => t.tipo === 'despesa').reduce((sum, t) => sum + toAmount(t.valor), 0);
-  const recent = [...transactions].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 4);
+  const income = current.filter((t) => isRealized(t) && t.tipo === 'receita').reduce((sum, t) => sum + toAmount(t.valor), 0);
+  const expense = current.filter((t) => isRealized(t) && t.tipo === 'despesa').reduce((sum, t) => sum + toAmount(t.valor), 0);
+  const available = transactions.filter(isRealized).reduce((sum, item) => sum + (item.tipo === 'receita' ? 1 : -1) * toAmount(item.valor), 0);
+  const pendingIncome = current.filter(t => !isRealized(t) && t.tipo === 'receita').reduce((sum,t) => sum + toAmount(t.valor), 0);
+  const pendingExpenses = current.filter(t => !isRealized(t) && t.tipo === 'despesa').reduce((sum,t) => sum + toAmount(t.valor), 0);
+  const recent = [...transactions].sort(newestCreatedFirst).slice(0, 4);
 
   if (loading && transactions.length === 0) return <Screen><LoadingState /></Screen>;
 
@@ -67,8 +74,8 @@ export default function Dashboard() {
       {error ? <InlineNotice>{error}</InlineNotice> : null}
 
       <Panel style={{ backgroundColor: colors.primary, borderColor: colors.primary }}>
-        <Text style={{ color: '#E7D3FF', fontSize: 14 }}>Saldo do mês</Text>
-        <Text style={{ color: colors.text, fontSize: 31, fontWeight: '800', marginTop: 4 }}>{currency(income - expense)}</Text>
+        <Text style={{ color: '#E7D3FF', fontSize: 14 }}>Saldo disponível</Text>
+        <Text style={{ color: colors.text, fontSize: 31, fontWeight: '800', marginTop: 4 }}>{currency(available)}</Text>
         <Text style={{ color: '#E7D3FF', fontSize: 12, marginTop: 3 }}>{now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</Text>
         <Pressable onPress={() => router.push('/nova-transacao')} style={{ position: 'absolute', right: 16, bottom: 17, padding: 9, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)' }}>
           <Ionicons name="add" size={23} color={colors.text} />
@@ -88,6 +95,12 @@ export default function Dashboard() {
         </Panel>
       </View>
 
+      <Panel>
+        <Text style={{ color: colors.text, fontWeight: '700' }}>Previsto para este mês</Text>
+        <Text style={{ color: colors.muted, fontSize: 12 }}>A receber: {currency(pendingIncome)} · A pagar: {currency(pendingExpenses)}</Text>
+        <Text style={{ color: colors.muted, fontSize: 11 }}>O saldo disponível considera somente receitas recebidas e despesas pagas até hoje.</Text>
+      </Panel>
+
       <SectionTitle action={<Pressable onPress={() => router.push('/transacoes')}><Text style={{ color: colors.primaryLight }}>Ver todas</Text></Pressable>}>Lançamentos recentes</SectionTitle>
       <Panel>
         {recent.length === 0 ? <EmptyState label="Seus lançamentos aparecerão aqui." /> : recent.map((item) => (
@@ -97,7 +110,7 @@ export default function Dashboard() {
             </View>
             <View style={{ flex: 1 }}>
               <Text numberOfLines={1} style={{ color: colors.text, fontWeight: '600' }}>{item.descricao}</Text>
-              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>{item.categoria?.nome || 'Sem categoria'} · {dateLabel(item.data)}</Text>
+              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>{item.categoria?.nome || 'Sem categoria'} · {dateLabel(item.data)}{paymentLabel(item) ? ' · ' + paymentLabel(item) : ''} · {statusLabel(item)}</Text>
             </View>
             <Text style={{ color: item.tipo === 'receita' ? colors.success : colors.text, fontWeight: '700' }}>
               {item.tipo === 'despesa' ? '- ' : '+ '}{currency(toAmount(item.valor))}

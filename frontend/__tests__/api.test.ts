@@ -58,3 +58,24 @@ describe('API client', () => {
     expect(toAmount(Number.POSITIVE_INFINITY)).toBe(0);
   });
 });
+import { subscribeTransactions } from '../src/transactionEvents';
+
+it('notifies only successful transaction mutations, including deletions', async () => {
+  global.fetch=mockFetch as typeof fetch;
+  const changed=jest.fn();
+  const unsubscribe=subscribeTransactions(changed);
+  try {
+    mockFetch.mockResolvedValue({ok:true,status:201,json:async()=>({id:1})});
+    await api.post('/transacoes',{});
+    expect(changed).toHaveBeenCalledTimes(1);
+    mockFetch.mockResolvedValue({ok:false,status:400,json:async()=>({error:'Inválido'})});
+    await expect(api.put('/transacoes/1',{})).rejects.toThrow('Inválido');
+    expect(changed).toHaveBeenCalledTimes(1);
+    mockFetch.mockResolvedValue({ok:true,status:204});
+    await api.delete('/transacoes/1');
+    expect(changed).toHaveBeenCalledTimes(2);
+    mockFetch.mockResolvedValue({ok:true,status:200,json:async()=>[]});
+    await api.get('/transacoes');
+    expect(changed).toHaveBeenCalledTimes(2);
+  } finally {unsubscribe();}
+});

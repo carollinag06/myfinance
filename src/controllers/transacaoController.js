@@ -6,7 +6,18 @@ const { adicionarMeses } = require('../services/parcelas');
 const crud = createCrudController({
   model: Transacao,
   resourceName: 'transacao',
-  fields: ['descricao', 'valor', 'tipo', 'data', 'usuarioId', 'categoriaId', 'cartaoId'],
+  fields: ['descricao', 'valor', 'tipo', 'data', 'usuarioId', 'categoriaId', 'cartaoId', 'status', 'formaPagamento'],
+  preparePayload(payload, existing) {
+    const tipo = payload.tipo ?? existing?.tipo;
+    if (tipo === 'receita') {
+      payload.formaPagamento = null;
+      payload.cartaoId = null;
+    } else if (tipo === 'despesa' && payload.formaPagamento === undefined && (!existing || existing.tipo !== 'despesa' || Object.hasOwn(payload, 'cartaoId'))) {
+      const cartaoId = Object.hasOwn(payload, 'cartaoId') ? payload.cartaoId : existing?.cartaoId;
+      payload.formaPagamento = cartaoId != null ? 'cartao' : 'a_vista';
+    }
+    return payload;
+  },
   ownershipRelations: [
     { field: 'categoriaId', model: Categoria },
     { field: 'cartaoId', model: Cartao }
@@ -20,7 +31,12 @@ const crud = createCrudController({
 
 async function criarParceladas(req, res) {
   try {
-    const { descricao, valor, tipo, data, categoriaId, cartaoId, totalParcelas } = req.body || {};
+    const { descricao, valor, tipo, data, categoriaId, cartaoId, totalParcelas, status, formaPagamento } = req.body || {};
+    if (status !== undefined && !['previsto', 'realizado'].includes(status)) return res.status(400).json({ error: 'Situacao invalida.' });
+    const pagamento = formaPagamento ?? (cartaoId != null ? 'cartao' : 'a_vista');
+    if (!['a_vista', 'cartao'].includes(pagamento) || (pagamento === 'a_vista' && cartaoId != null)) {
+      return res.status(400).json({ error: 'Forma de pagamento invalida ou incompativel com o cartao informado.' });
+    }
     const total = Number(valor);
     const quantidade = Number(totalParcelas);
     const dataValida = typeof data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data) &&
@@ -55,6 +71,8 @@ async function criarParceladas(req, res) {
       descricao: descricao.trim(),
       valor: (valorBaseCentavos + (indice < sobraCentavos ? 1 : 0)) / 100,
       tipo,
+      formaPagamento: pagamento,
+      status: indice === 0 ? (status || 'previsto') : 'previsto',
       data: adicionarMeses(data, indice),
       usuarioId,
       categoriaId: categoriaId ?? null,
@@ -65,12 +83,12 @@ async function criarParceladas(req, res) {
     }));
 
     const criadas = await sequelize.transaction((transaction) =>
-      Transacao.bulkCreate(parcelas, { transaction, returning: true })
+      Transacao.bulkCreate(parcelas, { transaction, returning: true, validate: true })
     );
     return res.status(201).json(criadas);
   } catch (error) {
-    if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ error: 'Dados invalidos', detalhes: error.errors.map(({ message }) => message) });
+    if (error.name === 'SequelizeValidationError' || error.name === 'AggregateError') {
+      return res.status(400).json({ error: 'Dados invalidos', detalhes: (error.errors || []).map(({ message }) => message) });
     }
     console.error('Falha ao criar parcelas:', error.name, error.message);
     return res.status(500).json({ error: 'Erro ao criar as parcelas' });

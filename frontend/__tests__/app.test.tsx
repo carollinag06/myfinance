@@ -1,7 +1,9 @@
+import { notifyTransactionChange } from '../src/transactionEvents';
+import { FeedbackHost, dismissFeedback } from '../src/feedback';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import React from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { api } from '../src/api';
 import { useAuth } from '../src/session';
 import { PasswordField } from '../src/PasswordField';
@@ -16,7 +18,7 @@ import NewCardScreen from '../app/novo-cartao';
 import CategoriesScreen from '../app/categorias';
 import BudgetsScreen from '../app/orcamentos';
 import InvoicesScreen from '../app/faturas';
-import AnalyticsScreen from '../app/analises';
+import AnalyticsScreen from '../app/(tabs)/analises';
 import ProfileScreen from '../app/perfil';
 import IndexScreen from '../app/index';
 import RootLayout from '../app/_layout';
@@ -29,6 +31,7 @@ jest.mock('expo-router', () => {
   const { Text: TextComponent, View: ViewComponent } = require('react-native');
   const router = { push: jest.fn(), back: jest.fn(), replace: jest.fn() };
   let segments = ['index'];
+  let params = {};
   const MockTabs: any = ({ children }: { children: React.ReactNode }) => ReactModule.createElement(ViewComponent, null, children);
   MockTabs.Screen = ({ name, options }: { name: string; options?: { tabBarButton?: () => React.ReactNode; tabBarIcon?: (props: { color: string; size: number }) => React.ReactNode } }) => ReactModule.createElement(
     ReactModule.Fragment,
@@ -46,7 +49,8 @@ jest.mock('expo-router', () => {
     Tabs: MockTabs,
     Stack: MockStack,
     useRouter: () => router,
-    useLocalSearchParams: () => ({}),
+    useLocalSearchParams: () => params,
+    setLocalSearchParams: (value: any) => { params = value; },
     useSegments: () => segments,
     useRootNavigationState: () => ({ key: 'root' }),
     setSegments: (value: string[]) => { segments = value; },
@@ -88,6 +92,8 @@ const incomeCategory = { id: 2, nome: 'Salário', tipo: 'receita', usuarioId: 7 
 beforeEach(() => {
   jest.clearAllMocks();
   mockSetSegments(['index']);
+  expoRouterMock.setLocalSearchParams({});
+  dismissFeedback();
   mockApi.get.mockResolvedValue([] as never);
   mockApi.post.mockResolvedValue({} as never);
   mockApi.put.mockResolvedValue({} as never);
@@ -259,6 +265,7 @@ describe('main finance flows', () => {
     await fireEvent.changeText(screen.getByPlaceholderText('Buscar descrição ou categoria'), 'salário');
     expect(screen.getByText('Pagamento')).toBeTruthy();
     expect(screen.queryByText('Compra semanal')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
     await fireEvent.press(screen.getByText('Limpar filtros'));
     await fireEvent.press(screen.getByText('Despesas'));
     expect(screen.getByText('Compra semanal')).toBeTruthy();
@@ -409,6 +416,8 @@ describe('main finance flows', () => {
     expect(atualizarUsuario).toHaveBeenCalled();
     expect(await screen.findByText('Perfil atualizado.')).toBeTruthy();
 
+    expect(screen.queryByPlaceholderText('Senha atual')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Mudar senha' }));
     await fireEvent.changeText(screen.getByPlaceholderText('Senha atual'), 'senha-atual');
     await fireEvent.changeText(screen.getByPlaceholderText('Nova senha (mínimo 8 caracteres)'), 'nova-senha-123');
     await fireEvent.changeText(screen.getByPlaceholderText('Confirme a nova senha'), 'nova-senha-123');
@@ -417,6 +426,7 @@ describe('main finance flows', () => {
       senhaAtual: 'senha-atual', novaSenha: 'nova-senha-123',
     }));
     expect(await screen.findByText('Senha alterada com sucesso.')).toBeTruthy();
+    expect(screen.queryByPlaceholderText('Senha atual')).toBeNull();
   });
 
   it('validates and uploads a selected profile photo with the profile form', async () => {
@@ -431,5 +441,302 @@ describe('main finance flows', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Salvar perfil' }));
 
     await waitFor(() => expect(mockApi.putMultipart).toHaveBeenCalledWith('/usuarios/7', expect.any(FormData)));
+  });
+});
+
+describe('expanded analytics', () => {
+  it('shows category shares and filters the largest expenses', async () => {
+    mockApi.get.mockResolvedValue([
+      { id: 51, descricao: 'Supermercado', valor: 90, tipo: 'despesa', data: `${currentMonth}-05`, categoria: expenseCategory },
+      { id: 52, descricao: 'Cinema', valor: 30, tipo: 'despesa', data: `${currentMonth}-06`, categoria: { id: 8, nome: 'Lazer', tipo: 'despesa' } },
+      { id: 53, descricao: 'Salário', valor: 200, tipo: 'receita', data: `${currentMonth}-01` },
+    ] as never);
+    await render(<AnalyticsScreen />);
+    expect(await screen.findByText('Como foi o seu mês')).toBeTruthy();
+    expect(screen.getByText('40,0%')).toBeTruthy();
+    expect(screen.getByText('Supermercado')).toBeTruthy();
+    expect(screen.getByText('Cinema')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Filtrar categoria Alimentação'));
+    expect(screen.getByText('Supermercado')).toBeTruthy();
+    expect(screen.queryByText('Cinema')).toBeNull();
+    await fireEvent.press(screen.getByText('Alimentação · Limpar filtro'));
+    expect(screen.getByText('Cinema')).toBeTruthy();
+  });
+
+  it('ends the six-month history at the selected month', async () => {
+    mockApi.get.mockResolvedValue([] as never);
+    await render(<AnalyticsScreen />);
+    await screen.findByText('Receitas × despesas');
+    const [year, month] = currentMonth.split('-').map(Number);
+    const title = (offset: number) => new Date(year, month - 1 + offset, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    expect(screen.getByLabelText('Ver ' + title(0))).toBeTruthy();
+    expect(screen.getByLabelText('Ver ' + title(-5))).toBeTruthy();
+    expect(screen.queryByLabelText('Ver ' + title(1))).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Ver ' + title(-1)));
+    expect(screen.queryByLabelText('Ver ' + title(0))).toBeNull();
+  });
+});
+
+describe('analytics type reports', () => {
+  it('filters categories, history and transactions by income or expenses and restores overview', async () => {
+    mockApi.get.mockResolvedValue([
+      { id: 71, descricao: 'Pagamento mensal', valor: 1000, tipo: 'receita', data: `${currentMonth}-01`, categoria: incomeCategory },
+      { id: 72, descricao: 'Compra mensal', valor: 100, tipo: 'despesa', data: `${currentMonth}-02`, categoria: expenseCategory },
+    ] as never);
+    await render(<AnalyticsScreen />);
+    await screen.findByText('Maiores gastos');
+    await fireEvent.press(screen.getByLabelText('Filtrar categoria Alimentação'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver relatório de receitas' }));
+    expect(screen.getByText('Receitas do período')).toBeTruthy();
+    expect(screen.getByText('Receitas por categoria')).toBeTruthy();
+    expect(screen.getByText('Pagamento mensal')).toBeTruthy();
+    expect(screen.queryByText('Compra mensal')).toBeNull();
+    expect(screen.queryByLabelText('Filtrar categoria Alimentação')).toBeNull();
+    expect(screen.getByLabelText('Filtrar categoria Salário')).toBeTruthy();
+    expect(screen.queryByText('● Despesas')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver relatório de despesas' }));
+    expect(screen.getByText('Despesas do período')).toBeTruthy();
+    expect(screen.getByText('Compra mensal')).toBeTruthy();
+    expect(screen.queryByText('Pagamento mensal')).toBeNull();
+    expect(screen.queryByLabelText('Filtrar categoria Salário')).toBeNull();
+    expect(screen.queryByText('● Receitas')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver visão geral' }));
+    expect(screen.getByText('Saldo do período')).toBeTruthy();
+    expect(screen.getByText('● Receitas')).toBeTruthy();
+    expect(screen.getByText('● Despesas')).toBeTruthy();
+  });
+});
+
+describe('compact statement filters', () => {
+  it('keeps filters collapsed and preserves the selection after showing results', async () => {
+    mockApi.get.mockImplementation(async (path: string) => path === '/transacoes' ? [
+      { id: 81, descricao: 'Mercado da semana', valor: 50, tipo: 'despesa', data: `${currentMonth}-10`, categoriaId: 1, categoria: expenseCategory },
+      { id: 82, descricao: 'Recebimento mensal', valor: 500, tipo: 'receita', data: `${currentMonth}-11`, categoriaId: 2, categoria: incomeCategory },
+    ] as never : [expenseCategory, incomeCategory] as never);
+    await render(<TransactionsScreen />);
+    await screen.findByText('Mercado da semana');
+    expect(screen.queryByText('Filtrar extrato')).toBeNull();
+    expect(screen.queryByText('Limpar filtros')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+    await fireEvent.press(screen.getByText('Despesas'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+    expect(screen.queryByText('Filtrar extrato')).toBeNull();
+    expect(screen.getByText('Filtros (1)')).toBeTruthy();
+    expect(screen.getByText('Mercado da semana')).toBeTruthy();
+    expect(screen.queryByText('Recebimento mensal')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Limpar filtros' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+    expect(screen.getByText('Recebimento mensal')).toBeTruthy();
+    expect(screen.getByText('Filtros')).toBeTruthy();
+  });
+});
+
+describe('statement category multiselect', () => {
+  it('includes either selected category and allows deselecting and resetting', async () => {
+    const leisure = { id: 9, nome: 'Lazer', tipo: 'despesa' };
+    mockApi.get.mockImplementation(async (path: string) => path === '/transacoes' ? [
+      { id: 91, descricao: 'Compra de alimentos', valor: 50, tipo: 'despesa', data: `${currentMonth}-10`, categoriaId: expenseCategory.id, categoria: expenseCategory },
+      { id: 92, descricao: 'Entrada mensal', valor: 500, tipo: 'receita', data: `${currentMonth}-11`, categoriaId: incomeCategory.id, categoria: incomeCategory },
+      { id: 93, descricao: 'Ingresso cinema', valor: 30, tipo: 'despesa', data: `${currentMonth}-12`, categoriaId: 9, categoria: leisure },
+    ] as never : [expenseCategory, incomeCategory, leisure] as never);
+    await render(<TransactionsScreen />);
+    await screen.findByText('Compra de alimentos');
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+    await fireEvent.press(screen.getByRole('checkbox', { name: 'Alimentação' }));
+    await fireEvent.press(screen.getByRole('checkbox', { name: 'Lazer' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+    expect(screen.getByText('Compra de alimentos')).toBeTruthy();
+    expect(screen.getByText('Ingresso cinema')).toBeTruthy();
+    expect(screen.queryByText('Entrada mensal')).toBeNull();
+    expect(screen.getByText(/2 categorias/)).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+    await fireEvent.press(screen.getByRole('checkbox', { name: 'Alimentação' }));
+    expect(screen.queryByText('Compra de alimentos')).toBeNull();
+    expect(screen.getByText('Ingresso cinema')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Todas categorias' }));
+    expect(screen.getByText('Compra de alimentos')).toBeTruthy();
+    expect(screen.getByText('Entrada mensal')).toBeTruthy();
+  });
+});
+
+describe('realized and planned transactions', () => {
+  it('keeps planned and future amounts out of available balance', async () => {
+    mockApi.get.mockImplementation(async (path: string) => path === '/transacoes' ? [
+      { id: 101, descricao: 'Recebida', tipo: 'receita', valor: 1000, data: `${currentMonth}-01`, status: 'realizado' },
+      { id: 102, descricao: 'Paga', tipo: 'despesa', valor: 100, data: `${currentMonth}-01`, status: 'realizado' },
+      { id: 103, descricao: 'Prevista', tipo: 'receita', valor: 500, data: `${currentMonth}-01`, status: 'previsto' },
+      { id: 104, descricao: 'Futura', tipo: 'receita', valor: 9999, data: '9999-01-01', status: 'realizado' },
+    ] as never : [] as never);
+    await render(<Dashboard />);
+    await screen.findByText('Saldo disponível');
+    expect(screen.getByText(/900,00/)).toBeTruthy();
+    expect(screen.getByText(/A receber:/).props.children.join('')).toContain('500,00');
+  });
+
+  it('opens editing from the statement and marks an expense paid', async () => {
+    mockApi.get.mockImplementation(async (path: string) => path === '/transacoes' ? [{ id: 110, descricao: 'Conta de luz', tipo: 'despesa', valor: 100, data: `${currentMonth}-01`, status: 'previsto' }] as never : [] as never);
+    await render(<TransactionsScreen />);
+    await screen.findByText('Conta de luz');
+    await fireEvent.press(screen.getByRole('button', { name: 'Editar Conta de luz' }));
+    expect(mockRouter.push).toHaveBeenCalledWith('/nova-transacao?id=110');
+    await fireEvent.press(screen.getByRole('button', { name: 'Marcar como paga' }));
+    await waitFor(() => expect(mockApi.put).toHaveBeenCalledWith('/transacoes/110', { status: 'realizado', data: `${currentMonth}-01` }));
+    expect(screen.getByText('Paga')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Marcar como previsto' })).toBeTruthy();
+  });
+
+  it('loads an installment for editing and saves just that record', async () => {
+    expoRouterMock.setLocalSearchParams({ id: '120' });
+    mockApi.get.mockImplementation(async (path: string) => path === '/transacoes/120' ? {
+      id: 120, descricao: 'Notebook', tipo: 'despesa', valor: 100, data: `${currentMonth}-01`, status: 'previsto', categoriaId: 1, cartaoId: null, grupoParcelamento: 'grupo', numeroParcela: 2, totalParcelas: 3,
+    } as never : path === '/categorias' ? [expenseCategory] as never : [] as never);
+    await render(<NewTransactionScreen />);
+    expect(await screen.findByDisplayValue('Notebook')).toBeTruthy();
+    expect(screen.getByText(/Você está editando apenas esta parcela/)).toBeTruthy();
+    await fireEvent.changeText(screen.getByPlaceholderText('Descrição'), 'Notebook corrigido');
+    await fireEvent.changeText(screen.getByPlaceholderText('Valor (R$)'), '90,50');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Paga' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Salvar alterações' }));
+    await waitFor(() => expect(mockApi.put).toHaveBeenCalledWith('/transacoes/120', { descricao: 'Notebook corrigido', valor: 90.5, tipo: 'despesa', data: `${currentMonth}-01`, status: 'realizado', categoriaId: 1, cartaoId: null, formaPagamento: 'a_vista' }));
+    expect(mockApi.post).not.toHaveBeenCalled();
+    expect(mockRouter.back).toHaveBeenCalled();
+  });
+
+  it('filters analytics including the history by transaction status', async () => {
+    mockApi.get.mockResolvedValue([
+      { id: 131, descricao: 'Pago agora', valor: 100, tipo: 'despesa', data: `${currentMonth}-01`, status: 'realizado', categoria: expenseCategory },
+      { id: 132, descricao: 'A pagar depois', valor: 200, tipo: 'despesa', data: `${currentMonth}-01`, status: 'previsto', categoria: { id: 9, nome: 'Lazer', tipo: 'despesa' } },
+    ] as never);
+    await render(<AnalyticsScreen />);
+    await screen.findByText('Pago agora');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Realizados' }));
+    expect(screen.getByText('Pago agora')).toBeTruthy();
+    expect(screen.queryByText('A pagar depois')).toBeNull();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Previstos' }));
+    expect(screen.queryByText('Pago agora')).toBeNull();
+    expect(screen.getByText('A pagar depois')).toBeTruthy();
+  });
+});
+
+describe('consistent confirmation dialogs', () => {
+  it('requires confirmation, preserves records on errors and allows retrying deletion', async () => {
+    mockApi.get.mockImplementation(async (path: string) => path === '/transacoes' ? [{ id: 140, descricao: 'Teste exclusão', tipo: 'despesa', valor: 50, data: `${currentMonth}-01`, status: 'previsto' }] as never : [] as never);
+    await render(<><TransactionsScreen /><FeedbackHost /></>);
+    await screen.findByText('Teste exclusão');
+    await fireEvent.press(screen.getByLabelText('Excluir lançamento'));
+    expect(mockApi.delete).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(screen.getByText('Teste exclusão')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Excluir lançamento'));
+    mockApi.delete.mockRejectedValueOnce(new Error('Falha na conexão.'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Excluir' }));
+    expect(await screen.findByText('Falha na conexão.')).toBeTruthy();
+    expect(screen.getByText('Teste exclusão')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Excluir' }));
+    await waitFor(() => expect(screen.queryByText('Teste exclusão')).toBeNull());
+    expect(screen.getByText('Lançamento excluído.')).toBeTruthy();
+  });
+});
+
+it('keeps the edit form and its values when a save fails', async () => {
+  expoRouterMock.setLocalSearchParams({ id: '150' });
+  mockApi.get.mockImplementation(async (path: string) => path === '/transacoes/150' ? { id: 150, descricao: 'Original', tipo: 'receita', valor: 100, data: `${currentMonth}-01`, status: 'previsto' } as never : [] as never);
+  mockApi.put.mockRejectedValueOnce(new Error('Não foi possível salvar agora.'));
+  await render(<NewTransactionScreen />);
+  await screen.findByDisplayValue('Original');
+  await fireEvent.changeText(screen.getByPlaceholderText('Descrição'), 'Correção preservada');
+  await fireEvent.press(screen.getByRole('button', { name: 'Salvar alterações' }));
+  expect(await screen.findByText('Não foi possível salvar agora.')).toBeTruthy();
+  expect(screen.getByDisplayValue('Correção preservada')).toBeTruthy();
+  expect(mockRouter.back).not.toHaveBeenCalled();
+});
+
+it('requires confirmation before anticipating a future receipt and uses today as the actual date', async () => {
+  mockApi.get.mockImplementation(async (path: string) => path === '/transacoes' ? [{ id: 160, descricao: 'Receita futura', tipo: 'receita', valor: 50, data: '9999-01-01', status: 'previsto' }] as never : [] as never);
+  await render(<><TransactionsScreen /><FeedbackHost /></>);
+  await screen.findByText('Nenhum lançamento corresponde a esses filtros.');
+  await fireEvent.press(screen.getByRole('button', { name: 'Filtros' }));
+  await fireEvent.press(screen.getByText(/de \d{4}/));
+  await fireEvent.press(screen.getByRole('button', { name: 'Ver resultados' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Marcar como recebida' }));
+  expect(mockApi.put).not.toHaveBeenCalled();
+  expect(screen.getByText('Confirmar antecipação')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Confirmar recebimento' }));
+  const today = new Date();
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  await waitFor(() => expect(mockApi.put).toHaveBeenCalledWith('/transacoes/160', { status: 'realizado', data: todayISO }));
+  expect(screen.getByText('Recebida')).toBeTruthy();
+});
+
+it('allows card payment without a linked card and clears the link when switching to cash', async () => {
+  mockApi.get.mockImplementation(async (path: string) => path === '/cartoes' ? [{ id: 3, nome: 'Visa pessoal', limite: 1000 }] as never : [] as never);
+  await render(<NewTransactionScreen />);
+  await fireEvent.changeText(screen.getByPlaceholderText('Descrição'), 'Compra');
+  await fireEvent.changeText(screen.getByPlaceholderText('Valor (R$)'), '30');
+  await fireEvent.press(screen.getByRole('radio', { name: 'Cartão' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Salvar transação' }));
+  await waitFor(() => expect(mockApi.post).toHaveBeenCalledWith('/transacoes', expect.objectContaining({ formaPagamento: 'cartao', cartaoId: null })));
+  mockApi.post.mockClear();
+  await fireEvent.press(screen.getByRole('radio', { name: 'Usar cartão Visa pessoal' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Salvar transação' }));
+  await waitFor(() => expect(mockApi.post).toHaveBeenCalledWith('/transacoes', expect.objectContaining({ formaPagamento: 'cartao', cartaoId: 3 })));
+  mockApi.post.mockClear();
+  await fireEvent.press(screen.getByRole('radio', { name: 'À vista' }));
+  expect(screen.queryByText('Vincular cartão (opcional)')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'Salvar transação' }));
+  await waitFor(() => expect(mockApi.post).toHaveBeenCalledWith('/transacoes', expect.objectContaining({ formaPagamento: 'a_vista', cartaoId: null })));
+});
+
+it('restores the card payment selection when editing an expense', async () => {
+  expoRouterMock.setLocalSearchParams({ id: '170' });
+  mockApi.get.mockImplementation(async (path: string) => path === '/transacoes/170' ? { id: 170, descricao: 'Compra Visa', tipo: 'despesa', valor: 30, data: `${currentMonth}-01`, status: 'realizado', formaPagamento: 'cartao', cartaoId: 3 } as never : path === '/cartoes' ? [{ id: 3, nome: 'Visa pessoal', limite: 1000 }] as never : [] as never);
+  await render(<NewTransactionScreen />);
+  await screen.findByDisplayValue('Compra Visa');
+  expect(screen.getByRole('radio', { name: 'Cartão' }).props.accessibilityState.checked).toBe(true);
+  expect(screen.getByRole('radio', { name: 'Usar cartão Visa pessoal' }).props.accessibilityState.checked).toBe(true);
+});
+
+it('saves card payment when the account has no registered cards', async () => {
+  mockApi.get.mockResolvedValue([] as never);
+  await render(<NewTransactionScreen />);
+  await fireEvent.changeText(screen.getByPlaceholderText('Descrição'), 'Compra sem vínculo');
+  await fireEvent.changeText(screen.getByPlaceholderText('Valor (R$)'), '25');
+  await fireEvent.press(screen.getByRole('radio', { name: 'Cartão' }));
+  expect(screen.getByText('Você pode salvar como cartão sem cadastrar um.')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: 'Salvar transação' }));
+  await waitFor(() => expect(mockApi.post).toHaveBeenCalledWith('/transacoes', expect.objectContaining({ formaPagamento: 'cartao', cartaoId: null })));
+});
+
+describe('recent transaction refresh and ordering', () => {
+  it('shows latest registrations and refreshes after a transaction changes', async () => {
+    let rows = Array.from({length:6},(_,index)=>({id:index+1,descricao:'Lançamento '+(index+1),tipo:'despesa',valor:10,data:`${currentMonth}-01`,status:'realizado'}));
+    mockApi.get.mockImplementation(async (path:string)=>path==='/transacoes'?rows as never:[] as never);
+    await render(<Dashboard />);
+    await screen.findByText('Lançamento 6');
+    expect(screen.getAllByText(/^Lançamento \d$/).map(node=>node.props.children)).toEqual(['Lançamento 6','Lançamento 5','Lançamento 4','Lançamento 3']);
+    rows=[...rows,{id:7,descricao:'Cadastro novo retroativo',tipo:'despesa',valor:20,data:'2024-01-01',status:'realizado'}];
+    await act(async()=>{notifyTransactionChange();});
+    expect(await screen.findByText('Cadastro novo retroativo')).toBeTruthy();
+    expect(screen.queryByText('Lançamento 3')).toBeNull();
+  });
+  it('refreshes transactions even if a secondary dashboard request fails', async () => {
+    mockApi.get.mockImplementation(async(path:string)=>{
+      if(path==='/cartoes') throw new Error('Falha nos cartões');
+      if(path==='/transacoes') return [{id:1,descricao:'Recente disponível',valor:10,tipo:'receita',data:`${currentMonth}-01`,status:'realizado'}] as never;
+      return [] as never;
+    });
+    await render(<Dashboard />);
+    expect(await screen.findByText('Recente disponível')).toBeTruthy();
+  });
+  it('orders the statement by date and newest registration for equal dates', async () => {
+    mockApi.get.mockImplementation(async(path:string)=>path==='/transacoes'?[
+      {id:1,descricao:'Ordem antigo',valor:10,tipo:'despesa',data:`${currentMonth}-01`},
+      {id:2,descricao:'Ordem anterior',valor:10,tipo:'despesa',data:`${currentMonth}-02`},
+      {id:3,descricao:'Ordem recente',valor:10,tipo:'despesa',data:`${currentMonth}-02`},
+    ] as never:[] as never);
+    await render(<TransactionsScreen />);
+    await screen.findByText('Ordem recente');
+    expect(screen.getAllByText(/^Ordem /).map(node=>node.props.children)).toEqual(['Ordem recente','Ordem anterior','Ordem antigo']);
   });
 });

@@ -1,3 +1,4 @@
+import { notifyTransactionChange } from './transactionEvents';
 export interface Usuario {
   id: number;
   nome: string;
@@ -29,6 +30,9 @@ export interface Transacao {
   valor: number | string;
   tipo: 'receita' | 'despesa';
   data: string;
+  createdAt?: string;
+  status: 'previsto' | 'realizado';
+  formaPagamento?: 'a_vista' | 'cartao' | null;
   usuarioId: number;
   categoriaId?: number | null;
   cartaoId?: number | null;
@@ -80,13 +84,19 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
     throw new Error('Não foi possível conectar à API. Confira o endereço configurado e se o backend está ligado.');
   }
 
-  if (response.status === 204) return undefined as T;
+  const changedTransactions = method !== 'GET' && /^\/transacoes(?:\/|$)/.test(path);
+  if (response.status === 204) {
+    if (changedTransactions) notifyTransactionChange();
+    return undefined as T;
+  }
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const message = typeof payload?.error === 'string' ? payload.error : 'A solicitação não foi concluída.';
+    const details = Array.isArray(payload?.detalhes) ? payload.detalhes.filter((detail: unknown) => typeof detail === 'string') : [];
+    const message = details.length ? details.join(' ') : typeof payload?.error === 'string' ? payload.error : 'A solicitação não foi concluída.';
     throw new Error(message);
   }
+  if (changedTransactions) notifyTransactionChange();
   return payload as T;
 }
 

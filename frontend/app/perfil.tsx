@@ -1,8 +1,9 @@
+import { confirmAction } from '../src/feedback';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import React, { useState } from 'react';
-import { Alert, Image, Platform, Pressable, Text, View } from 'react-native';
+import { Image, Platform, Pressable, Text, View } from 'react-native';
 import { api, fotoUsuarioUrl, Usuario } from '../src/api';
 import { useAuth } from '../src/session';
 import { colors } from '../src/theme';
@@ -27,6 +28,7 @@ export default function ProfileScreen() {
   const [nome, setNome] = useState(usuario?.nome || '');
   const [email, setEmail] = useState(usuario?.email || '');
   const [fotoSelecionada, setFotoSelecionada] = useState<ImagePickerAsset | null>(null);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -156,6 +158,7 @@ export default function ProfileScreen() {
       setSenhaAtual('');
       setNovaSenha('');
       setConfirmarSenha('');
+      setMostrarSenha(false);
       setSaved('Senha alterada com sucesso.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível alterar a senha.');
@@ -165,15 +168,7 @@ export default function ProfileScreen() {
   }
 
   function confirmarSaida() {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm('Deseja sair da sua conta?')) void sair();
-      return;
-    }
-
-    Alert.alert('Sair da conta', 'Deseja encerrar sua sessão?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: () => void sair() },
-    ]);
+    confirmAction('Sair da conta', 'Deseja encerrar sua sessão?', [{ label: 'Sair', run: async () => { await sair(); } }]);
   }
 
   return (
@@ -198,15 +193,35 @@ export default function ProfileScreen() {
       </Panel>
 
       <Panel>
-        <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>Alterar senha</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={mostrarSenha ? 'Cancelar alteração de senha' : 'Mudar senha'}
+          accessibilityState={{ expanded: mostrarSenha }}
+          disabled={senhaLoading}
+          onPress={() => {
+            setMostrarSenha(!mostrarSenha);
+            setSenhaAtual('');
+            setNovaSenha('');
+            setConfirmarSenha('');
+            setError('');
+            setSaved('');
+          }}
+          style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+        >
+          <Ionicons name="lock-closed-outline" size={22} color={colors.primaryLight} />
+          <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700', flex: 1 }}>{mostrarSenha ? 'Cancelar alteração de senha' : 'Mudar senha'}</Text>
+          <Ionicons name={mostrarSenha ? 'chevron-up' : 'chevron-down'} size={20} color={colors.primaryLight} />
+        </Pressable>
+        {mostrarSenha ? <>
         <Text style={{ color: colors.muted, fontSize: 13 }}>Confirme sua senha atual para cadastrar uma nova.</Text>
         <Field value={senhaAtual} onChangeText={setSenhaAtual} placeholder="Senha atual" secureTextEntry autoCapitalize="none" autoCorrect={false} />
         <Field value={novaSenha} onChangeText={setNovaSenha} placeholder="Nova senha (mínimo 8 caracteres)" secureTextEntry autoCapitalize="none" autoCorrect={false} maxLength={72} />
         <Field value={confirmarSenha} onChangeText={setConfirmarSenha} placeholder="Confirme a nova senha" secureTextEntry autoCapitalize="none" autoCorrect={false} maxLength={72} />
         <PrimaryButton label="Atualizar senha" onPress={() => void alterarSenha()} loading={senhaLoading} />
+        </> : null}
       </Panel>
 
-      {saved ? <Text style={{ color: colors.success }}>{saved}</Text> : null}
+      {saved ? <InlineNotice tone="success">{saved}</InlineNotice> : null}
       {error ? <InlineNotice>{error}</InlineNotice> : null}
       <PrimaryButton label="Salvar perfil" onPress={() => void save()} loading={loading} />
       <Pressable
