@@ -70,7 +70,7 @@ RODAR A API
 -----------
 Abra um PowerShell na raiz do projeto:
 
-  cd E:\baixar\myfinance-main\myfinance-main
+  cd D:\myfinance-main
   npm install
   npm start
 
@@ -169,52 +169,33 @@ maiores que zero e datas devem usar AAAA-MM-DD.
 
 RODAR O APLICATIVO FRONT-END
 ----------------------------
-Abra um segundo PowerShell:
+O aplicativo Android atual fica em frontend-native/ e usa React Native CLI.
+Instale as dependencias nessa pasta com npm install. Abra um emulador Android
+ou conecte o celular com depuracao USB. Em terminais separados nessa pasta,
+execute npm start e npm run android. Configure a URL da API em
+frontend-native/src/config.ts.
 
-  cd E:\baixar\myfinance-main\myfinance-main\frontend
-  npm install
+ACESSO PELO NGROK
+-----------------
+Para conectar um celular que esteja fora da rede local, inicie a API e rode
+em outro terminal:
 
-O frontend/.env deve conter EXPO_PUBLIC_API_URL com o endereco da API
-acessivel pelo dispositivo:
+  ngrok http 3000
 
-  Celular fisico na mesma rede Wi-Fi:
-    EXPO_PUBLIC_API_URL=http://192.168.15.17:3000
+Copie o endereco HTTPS de Forwarding exibido pelo ngrok para a constante
+API_BASE_URL em frontend-native/src/config.ts.
 
-  Emulador Android:
-    EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
-
-  Web no mesmo computador ou simulador iOS:
-    EXPO_PUBLIC_API_URL=http://localhost:3000
-
-O IP 192.168.15.17 e o endereco local observado neste computador. Se ele
-mudar, consulte ipconfig e atualize frontend/.env. Nao coloque credenciais
-do banco nesse arquivo.
-
-Inicie o Expo dentro da pasta frontend:
-
-  npx expo start
-
-Para celular fisico, leia o QR code com o Expo Go. Para emulador Android,
-pressione a no terminal do Expo. Para navegador, use:
-
-  npm run web
-
-Mantenha os dois terminais (API e Expo) abertos. Para um celular fisico,
-permita o acesso do Node.js pela rede privada no Firewall do Windows, se
-for solicitado. O celular e o computador precisam estar na mesma rede.
+O app envia o cabecalho ngrok-skip-browser-warning para evitar a tela
+intersticial do plano gratuito. O endereco pode mudar ao reiniciar o tunel.
+Mantenha API, ngrok e Metro ativos durante o desenvolvimento.
 
 DIAGNOSTICO RAPIDO
 ------------------
 - Erro de conexao PostgreSQL: confira se o banco/PgBouncer esta iniciado,
   DB_HOST, DB_PORT, DB_NAME, DB_USER e DB_PASS.
-- Expo Go informa incompatibilidade de SDK: confira se o frontend usa SDK 57
-  e execute npm install dentro de frontend antes de iniciar o Expo.
-- Erro "Unable to resolve query-string": execute npm install dentro de
-  frontend para instalar as dependencias declaradas no package-lock.json.
-- O Expo pede para instalar expo na raiz: confirme que o terminal esta em
-  E:\baixar\myfinance-main\myfinance-main\frontend antes de iniciar.
-- Aplicativo nao acessa a API: confirme EXPO_PUBLIC_API_URL, que a API esta
-  rodando na porta 3000 e que o firewall permite conexoes.
+- Aplicativo nao acessa a API: confira API_BASE_URL, a porta 3000 e o ngrok.
+- Falha de build Android: confira Android SDK, JDK e o arquivo
+  frontend-native/android/local.properties.
 - Erro ao cadastrar ou entrar: reinicie a API e consulte o terminal; os
   controllers registram o tipo e a mensagem do erro sem imprimir a senha.
 - Nao execute npm audit fix --force sem revisar as atualizacoes: pode causar

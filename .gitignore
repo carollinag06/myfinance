@@ -1,4 +1,6 @@
 node_modules/
+.gradle-user-home/
+frontend-native/.template-git-backup/
 coverage/
 .env
 .env.local
@@ -21,3 +23,5 @@ Thumbs.db
 *.swo
 *~
 .expo/
+
+frontend-native/android/app/debug.keystore

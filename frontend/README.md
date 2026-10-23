@@ -9,6 +9,22 @@ Aplicativo mobile Expo para o backend MyFinance. Oferece login, dashboard, anál
 3. Copie .env.example para .env e ajuste EXPO_PUBLIC_API_URL.
 4. Inicie o Expo com npx expo start.
 
+## Acesso pelo ngrok
+
+Para usar o app em um celular fora da rede local, inicie a API e abra um
+túnel para a porta 3000:
+
+~~~bash
+ngrok http 3000
+~~~
+
+Copie o endereço HTTPS exibido pelo ngrok para `EXPO_PUBLIC_API_URL` em
+`frontend/.env`, por exemplo `https://seu-endereco.ngrok-free.dev`. O cliente
+do app envia automaticamente `ngrok-skip-browser-warning` nos domínios ngrok
+para que a tela intersticial gratuita não seja interpretada como resposta da
+API. Reinicie o Expo depois de alterar `.env`. O endereço gratuito pode mudar
+quando o túnel for reiniciado.
+
 O emulador Android normalmente acessa o computador pelo endereço http://10.0.2.2:3000. No simulador iOS use http://localhost:3000. Em um celular físico, configure o IP local do computador e mantenha ambos na mesma rede.
 
 ## API usada

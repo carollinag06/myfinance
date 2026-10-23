@@ -8,13 +8,15 @@ const {
   atualizarUsuario,
   alterarSenha,
   deletarUsuario,
-  login
+  login,
+  loginGoogle
 } = require('../controllers/usuarioController');
 
 const router = Router();
 
 router.post('/', fotoUpload, criarUsuario);
 router.post('/login', login);
+router.post('/google', loginGoogle);
 
 router.use(autenticar);
 

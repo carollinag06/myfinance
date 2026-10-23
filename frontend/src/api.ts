@@ -62,7 +62,12 @@ export interface Fatura {
 }
 
 const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const usesNgrok = /(^|\.)ngrok(-free)?\.(dev|app|io)$/.test(new URL(API_URL).hostname);
 let accessToken: string | null = null;
+
+function addTunnelHeaders(headers: Record<string, string>) {
+  if (usesNgrok) headers['ngrok-skip-browser-warning'] = 'true';
+}
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
@@ -72,6 +77,7 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (accessToken) headers.Authorization = 'Bearer ' + accessToken;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
+  addTunnelHeaders(headers);
 
   let response: Response;
   try {
@@ -103,6 +109,7 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
 async function requestMultipart<T>(path: string, method: string, body: FormData): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (accessToken) headers.Authorization = 'Bearer ' + accessToken;
+  addTunnelHeaders(headers);
 
   let response: Response;
   try {
@@ -128,6 +135,8 @@ export const api = {
   delete: <T,>(path: string) => request<T>(path, 'DELETE'),
   login: (email: string, senha: string) =>
     request<{ usuario: Usuario; token: string }>('/usuarios/login', 'POST', { email, senha }),
+  loginGoogle: (idToken: string) =>
+    request<{ usuario: Usuario; token: string }>('/usuarios/google', 'POST', { idToken }),
   register: (nome: string, email: string, senha: string) =>
     request<Usuario>('/usuarios', 'POST', { nome, email, senha }),
 };

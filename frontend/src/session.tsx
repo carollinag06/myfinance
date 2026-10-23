@@ -12,6 +12,7 @@ interface AuthContextValue {
   usuario: Usuario | null;
   pronto: boolean;
   entrar: (email: string, senha: string) => Promise<void>;
+  entrarComGoogle: (idToken: string) => Promise<void>;
   cadastrar: (nome: string, email: string, senha: string) => Promise<void>;
   sair: () => Promise<void>;
   atualizarUsuario: (usuario: Usuario) => Promise<void>;
@@ -69,6 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUsuario(session.usuario);
   }, []);
 
+  const entrarComGoogle = useCallback(async (idToken: string) => {
+    const session = await api.loginGoogle(idToken);
+    await writeSession(JSON.stringify(session));
+    setAccessToken(session.token);
+    setUsuario(session.usuario);
+  }, []);
+
   const cadastrar = useCallback(async (nome: string, email: string, senha: string) => {
     await api.register(nome.trim(), email.trim().toLowerCase(), senha);
     await entrar(email, senha);
@@ -93,10 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     usuario,
     pronto,
     entrar,
+    entrarComGoogle,
     cadastrar,
     sair,
     atualizarUsuario,
-  }), [usuario, pronto, entrar, cadastrar, sair, atualizarUsuario]);
+  }), [usuario, pronto, entrar, entrarComGoogle, cadastrar, sair, atualizarUsuario]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

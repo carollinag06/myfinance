@@ -18,6 +18,7 @@ async function iniciarServidor() {
     await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261022_add_transaction_status.sql'), 'utf8'));
 
     await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261022_add_payment_method.sql'), 'utf8'));
+    await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261023_add_google_sub.sql'), 'utf8'));
 
     server = app.listen(PORT);
     await new Promise((resolve, reject) => {

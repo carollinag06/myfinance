@@ -17,6 +17,7 @@ CREATE TABLE usuarios (
     nome VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     senha VARCHAR(255) NOT NULL,
+    google_sub VARCHAR(255) UNIQUE,
     tipo_usuario VARCHAR(50) NOT NULL CHECK (tipo_usuario IN ('usuario', 'admin')),
     foto VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

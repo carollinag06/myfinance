@@ -45,6 +45,27 @@ Na inicialização, a aplicação autentica no PostgreSQL, sincroniza os modelos
 
 ## Autenticação
 
+### Login com Google
+
+O aplicativo Android nativo fica em `frontend-native/`. Registre um cliente
+Android com pacote `com.myfinance.finapp` e o SHA-1 da assinatura do APK.
+Crie também um cliente OAuth do tipo Aplicativo da Web no mesmo projeto Google
+Cloud e coloque seu ID em `frontend-native/src/config.ts` como
+`GOOGLE_WEB_CLIENT_ID`. Para esse uso nativo, os campos de origem JavaScript e
+URI de redirecionamento do cliente Web podem ficar vazios.
+
+No `.env` da API, inclua os dois IDs, separados por vírgula:
+
+~~~env
+GOOGLE_CLIENT_IDS=seu-id-web.apps.googleusercontent.com,seu-id-android.apps.googleusercontent.com
+~~~
+
+Reinicie a API após configurar. O backend verifica a assinatura, validade, público e
+e-mail confirmado do token antes de criar a sessão MyFinance. Contas já
+cadastradas com senha precisam continuar entrando com senha; não são
+vinculadas automaticamente por e-mail. A migração
+`database/migrations/20261023_add_google_sub.sql` é aplicada na inicialização.
+
 O cadastro e o login são públicos. O cadastro cria sempre um usuário comum, mesmo que o corpo enviado contenha tipoUsuario. Para acessar os demais endpoints, envie o token do login no cabeçalho:
 
 ~~~http
@@ -89,15 +110,15 @@ As listagens podem ser filtradas por usuarioId quando chamadas por um administra
 
 ## Observações
 
-Execute `npm test` na raiz para verificar a API. No frontend, execute `npm run typecheck` e `npm test -- --watch=false`.
+Execute `npm test` na raiz para verificar a API. O aplicativo Android pode ser compilado em `frontend-native/android` com `gradlew.bat assembleDebug`.
 
 ## Aplicativo mobile
 
-O front end Expo fica em `frontend/`. Consulte `frontend/README.md` para a configuração detalhada. Para iniciar:
+O aplicativo Android em React Native CLI fica em `frontend-native/`. Consulte `frontend-native/README.md` para a configuração detalhada. Para iniciar:
 
 1. Inicie a API na raiz do projeto com `npm start`.
-2. Em outro terminal, entre em `frontend/`, configure `EXPO_PUBLIC_API_URL` no `.env` conforme o emulador ou dispositivo e rode `npm install`.
-3. Rode `npx expo start` dentro de `frontend/`.
+2. Entre em `frontend-native/`, ajuste `API_BASE_URL` em `src/config.ts` e rode `npm install`.
+3. Rode `npm start` e, em outro terminal, `npm run android`.
 
 O aplicativo inclui login e cadastro, resumo financeiro, análises mensais, extrato com busca e filtros, lançamentos parcelados, cartões, categorias padrão, metas/orçamentos e faturas.
 

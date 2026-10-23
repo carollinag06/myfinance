@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const fs = require('fs/promises');
 const path = require('path');
 require('dotenv').config();
@@ -6,6 +8,7 @@ const Usuario = require('../models/Usuario');
 const { gerarHash, compararSenha } = require('../hash');
 const { sequelize } = require('../models');
 const { ensureDefaultCategories } = require('../services/defaultCategories');
+const googleClient = new OAuth2Client();
 
 const normalizarEmail = (email) => typeof email === 'string' ? email.trim().toLowerCase() : '';
 const emailValido = (email) => email.length <= 150 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -14,7 +17,7 @@ const buscarPorEmail = (email) => Usuario.findOne({
 });
 
 const dadosPublicos = (usuario) => {
-  const { senha, ...dados } = usuario.toJSON();
+  const { senha, googleSub, ...dados } = usuario.toJSON();
   return dados;
 };
 
@@ -54,8 +57,7 @@ const criarUsuario = async (req, res) => {
       return usuario;
     });
 
-    const { senha: _, ...usuarioSemSenha } = novoUsuario.toJSON();
-    return res.status(201).json(usuarioSemSenha);
+    return res.status(201).json(dadosPublicos(novoUsuario));
   } catch (error) {
     console.error('Falha ao criar usuário:', error.name, error.message);
     if (error.name === 'SequelizeUniqueConstraintError') {
@@ -71,7 +73,7 @@ const criarUsuario = async (req, res) => {
 const listarUsuarios = async (req, res) => {
   try {
     const usuarios = await Usuario.findAll({
-      attributes: { exclude: ['senha'] }
+      attributes: { exclude: ['senha', 'googleSub'] }
     });
     return res.status(200).json(usuarios);
   } catch (error) {
@@ -83,7 +85,7 @@ const buscarUsuarioPorId = async (req, res) => {
   try {
     const { id } = req.params;
     const usuario = await Usuario.findByPk(id, {
-      attributes: { exclude: ['senha'] }
+      attributes: { exclude: ['senha', 'googleSub'] }
     });
 
     if (!usuario) {
@@ -246,6 +248,57 @@ const login = async (req, res) => {
   }
 };
 
+const loginGoogle = async (req, res) => {
+  const clientIds = (process.env.GOOGLE_CLIENT_IDS || '').split(',').map((id) => id.trim()).filter(Boolean);
+  if (!clientIds.length) return res.status(503).json({ error: 'Login Google não configurado no servidor.' });
+  const idToken = req.body?.idToken;
+  if (typeof idToken !== 'string' || !idToken || idToken.length > 8192) {
+    return res.status(400).json({ error: 'Token Google inválido.' });
+  }
+
+  try {
+    let ticket;
+    try {
+      ticket = await googleClient.verifyIdToken({ idToken, audience: clientIds });
+    } catch {
+      return res.status(401).json({ error: 'Token Google inválido ou expirado.' });
+    }
+    const profile = ticket.getPayload();
+    const email = normalizarEmail(profile?.email);
+    if (!profile?.sub || profile.email_verified !== true || !emailValido(email)) {
+      return res.status(401).json({ error: 'Conta Google sem e-mail verificado.' });
+    }
+
+    let usuario = await Usuario.findOne({ where: { googleSub: profile.sub } });
+    if (!usuario) {
+      const existing = await buscarPorEmail(email);
+      if (existing) return res.status(409).json({ error: 'Este e-mail já tem uma conta. Entre com sua senha.' });
+      const nome = (typeof profile.name === 'string' && profile.name.trim() ? profile.name.trim() : email.split('@')[0]).slice(0, 100);
+      usuario = await sequelize.transaction(async (transaction) => {
+        const created = await Usuario.create({
+          nome,
+          email,
+          senha: await gerarHash(crypto.randomBytes(32).toString('hex')),
+          googleSub: profile.sub,
+          tipoUsuario: 'usuario'
+        }, { transaction });
+        await ensureDefaultCategories(created.id, transaction);
+        return created;
+      });
+    }
+
+    const token = jwt.sign({ id: usuario.id, nome: usuario.nome, email: usuario.email, tipoUsuario: usuario.tipoUsuario }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+    });
+    return res.status(200).json({ usuario: dadosPublicos(usuario), token });
+  } catch (error) {
+    if (error.name === 'SequelizeUniqueConstraintError') return res.status(409).json({ error: 'Conta já cadastrada. Tente entrar novamente.' });
+    if (error.name === 'SequelizeValidationError') return res.status(400).json({ error: 'Dados da conta Google inválidos.' });
+    console.error('Falha no login Google:', error.name, error.message);
+    return res.status(503).json({ error: 'Não foi possível verificar o login Google agora.' });
+  }
+};
+
 module.exports = {
   criarUsuario,
   listarUsuarios,
@@ -253,5 +306,6 @@ module.exports = {
   atualizarUsuario,
   alterarSenha,
   deletarUsuario,
-  login
+  login,
+  loginGoogle
 };

@@ -20,6 +20,12 @@ const Usuario = sequelize.define('Usuario', {
     type: DataTypes.STRING(255),
     allowNull: false
   },
+  googleSub: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    unique: true,
+    field: 'google_sub'
+  },
   tipoUsuario: {
     type: DataTypes.STRING(50),
     allowNull: false,
