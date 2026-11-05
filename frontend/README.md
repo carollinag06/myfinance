@@ -1,0 +1,59 @@
+# MyFinance Mobile
+
+Aplicativo mobile Expo para o backend MyFinance. Oferece login, dashboard, análises mensais, extrato com busca e filtros, transações parceladas, cartões, categorias padrão e personalizadas, metas/orçamentos e faturas.
+
+## Executar
+
+1. Inicie o backend na raiz do projeto com npm start.
+2. Neste diretório, instale dependências com npm install.
+3. Copie .env.example para .env e ajuste EXPO_PUBLIC_API_URL.
+4. Inicie o Expo com npx expo start.
+
+## Login Google
+
+O frontend usa o Expo AuthSession para obter um token de identidade e envia esse
+token para `POST /usuarios/google`. Crie clientes OAuth no mesmo projeto Google
+Cloud e configure os IDs públicos em `frontend/.env`:
+
+- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` para executar no navegador.
+- `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` para Android, com o pacote
+	`com.myfinance.finapp` e o SHA-1 do certificado usado no build.
+- `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` para iOS, com o bundle ID
+	`com.myfinance.finapp`.
+
+Adicione os IDs correspondentes, separados por vírgula, em `GOOGLE_CLIENT_IDS`
+no `.env` da API e reinicie o backend. Em desenvolvimento, o frontend registra
+a URI de redirecionamento no console; se o cliente OAuth Web exigir uma URI,
+cadastre exatamente essa URI no Google Cloud. Enquanto a tela de consentimento
+estiver em modo de teste, inclua a conta usada no login entre os usuários de
+teste. Reinicie o Expo após alterar `.env`.
+
+## Acesso pelo ngrok
+
+Para usar o app em um celular fora da rede local, inicie a API e abra um
+túnel para a porta 3000:
+
+~~~bash
+ngrok http 3000
+~~~
+
+Copie o endereço HTTPS exibido pelo ngrok para `EXPO_PUBLIC_API_URL` em
+`frontend/.env`, por exemplo `https://seu-endereco.ngrok-free.dev`. O cliente
+do app envia automaticamente `ngrok-skip-browser-warning` nos domínios ngrok
+para que a tela intersticial gratuita não seja interpretada como resposta da
+API. Reinicie o Expo depois de alterar `.env`. O endereço gratuito pode mudar
+quando o túnel for reiniciado.
+
+O emulador Android normalmente acessa o computador pelo endereço http://10.0.2.2:3000. No simulador iOS use http://localhost:3000. Em um celular físico, configure o IP local do computador e mantenha ambos na mesma rede.
+
+## API usada
+
+O app consome POST /usuarios, POST /usuarios/login, GET e PUT /usuarios/:id, POST /transacoes/parceladas e as rotas de CRUD de /transacoes, /cartoes, /categorias, /orcamentos e /faturas. As chamadas autenticadas enviam Authorization: Bearer <token>.
+
+Em bancos já existentes, aplique todos os arquivos de `database/migrations/` antes de iniciar a API. A migração `20261019_add_analysis_and_installments.sql` adiciona os tipos e indicadores de categoria e os campos usados para agrupar parcelas.
+
+As respostas e requisições usam os nomes do backend, como nome, valor, tipo, categoriaId e cartaoId. O app não coleta o número completo do cartão.
+
+## Sessão
+
+No iOS e Android, a sessão com o token é guardada pelo expo-secure-store. Na versão web, é usada a sessão de armazenamento local do navegador. A senha não é persistida pelo aplicativo.

@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "MyFinance",
+    "slug": "myfinance",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "myfinance",
+    "userInterfaceStyle": "dark",
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permita que o MyFinance acesse suas fotos para usar uma imagem no perfil.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "android": {
+      "package": "com.myfinance.finapp"
+    },
+    "ios": {
+      "bundleIdentifier": "com.myfinance.finapp",
+      "supportsTablet": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "20389c35-41ae-40fa-9e4a-3a1a4165ef22"
+      }
+    },
+    "owner": "caroll123456"
+  }
+}
