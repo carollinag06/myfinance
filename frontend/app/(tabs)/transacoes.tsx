@@ -1,4 +1,3 @@
-// Lista, filtra e atualiza a situação dos lançamentos financeiros.
 import { newestDateFirst } from '../../src/transactions';
 import { paymentLabel } from '../../src/transactions';
 import { confirmAction, showSuccess } from '../../src/feedback';

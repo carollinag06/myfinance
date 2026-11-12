@@ -1,4 +1,3 @@
-// Define os dados persistidos e suas validações.
 const sequelize = require('../config/database');
 const Usuario = require('./Usuario');
 const Categoria = require('./Categoria');
@@ -6,18 +5,6 @@ const Cartao = require('./Cartao');
 const Transacao = require('./Transacao');
 const Orcamento = require('./Orcamento');
 const Fatura = require('./Fatura');
-const PasswordResetToken = require('./PasswordResetToken');
-
-PasswordResetToken.belongsTo(Usuario, {
-  foreignKey: 'usuarioId',
-  as: 'usuario',
-  onDelete: 'CASCADE',
-  onUpdate: 'CASCADE'
-});
-Usuario.hasOne(PasswordResetToken, {
-  foreignKey: 'usuarioId',
-  as: 'passwordResetToken'
-});
 
 Categoria.belongsTo(Usuario, {
   foreignKey: 'usuarioId',
@@ -125,6 +112,5 @@ module.exports = {
   Cartao,
   Transacao,
   Orcamento,
-  Fatura,
-  PasswordResetToken
+  Fatura
 };

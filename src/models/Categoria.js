@@ -1,4 +1,3 @@
-// Define os campos e as validações do modelo de categoria.
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 

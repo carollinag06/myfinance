@@ -27,27 +27,12 @@ API REST para controle de finanças pessoais, construída com Node.js, Express, 
    JWT_SECRET=chave_aleatoria_longa
    JWT_EXPIRES_IN=7d
    GOOGLE_CLIENT_IDS=seu-id-web.apps.googleusercontent.com,seu-id-android.apps.googleusercontent.com
-   PASSWORD_RESET_SECRET=outra_chave_aleatoria_longa
-   SMTP_HOST=smtp.seuprovedor.com
-   SMTP_PORT=587
-   SMTP_SECURE=false
-   SMTP_USER=seu-usuario-smtp
-   SMTP_PASS=sua-senha-smtp
-   SMTP_FROM=nao-responda@seudominio.com
-   APP_NAME=MyFinance
-   APP_RESET_PASSWORD_URL=myfinance:///redefinir-senha
    ~~~
 
    Gere um valor longo e aleatório para JWT_SECRET. Substitua os exemplos de
    GOOGLE_CLIENT_IDS pelos IDs dos clientes Web e Android já existentes no
    projeto Google Cloud. O arquivo .env está no .gitignore e não deve ser
    versionado.
-
-   Para recuperação de senha, configure as credenciais SMTP do seu provedor e
-   gere uma chave aleatória exclusiva para PASSWORD_RESET_SECRET. Defina
-   APP_RESET_PASSWORD_URL para o link público da tela de redefinição; o padrão
-   abre o app pelo esquema myfinance. Sem SMTP e segredo configurados, a API
-   desativa a solicitação de recuperação.
 
 3. Se estiver usando um banco já existente, abra o Query Tool do pgAdmin
    conectado ao banco configurado e execute, em ordem, os SQLs em
@@ -60,7 +45,7 @@ API REST para controle de finanças pessoais, construída com Node.js, Express, 
    npm start
    ~~~
 
-Na inicialização, a aplicação autentica no PostgreSQL, sincroniza os modelos do Sequelize e aplica as migrações aditivas necessárias, incluindo situação das transações e tokens de recuperação de senha. Em bancos existentes, lançamentos antigos até a data atual são classificados como realizados; os futuros, como previstos. O endpoint GET /health retorna {"status":"ok"} quando o servidor está disponível.
+Na inicialização, a aplicação autentica no PostgreSQL, sincroniza os modelos do Sequelize e aplica a migração aditiva de situação das transações (`20261022_add_transaction_status.sql`). Em bancos existentes, lançamentos antigos até a data atual são classificados como realizados; os futuros, como previstos. A migração pode ser reexecutada sem sobrescrever as situações escolhidas. O endpoint GET /health retorna {"status":"ok"} quando o servidor está disponível.
 
 ## Autenticação
 
@@ -89,10 +74,6 @@ e-mail confirmado do token antes de criar a sessão MyFinance. Contas já
 cadastradas com senha precisam continuar entrando com senha; não são
 vinculadas automaticamente por e-mail. A migração
 `database/migrations/20261023_add_google_sub.sql` é aplicada na inicialização.
-Quando o token verificado inclui a declaração `picture`, a API usa a foto do
-Google no perfil; uma foto enviada pelo próprio usuário tem prioridade. O claim
-`picture` pode não estar presente em todos os logins, conforme a
-[documentação do Google](https://developers.google.com/identity/openid-connect/openid-connect).
 
 O cadastro e o login são públicos. O cadastro cria sempre um usuário comum, mesmo que o corpo enviado contenha tipoUsuario. Para acessar os demais endpoints, envie o token do login no cabeçalho:
 
@@ -108,8 +89,6 @@ A API não tem uma rota pública para criar administradores. O primeiro administ
 | --- | --- | --- |
 | POST | /usuarios | Público; aceita foto opcional como multipart/form-data |
 | POST | /usuarios/login | Público |
-| POST | /usuarios/solicitar-recuperacao | Público; envia link por e-mail |
-| POST | /usuarios/redefinir-senha | Público; valida token do link e troca a senha |
 | GET | /usuarios | Administrador |
 | GET, PUT, DELETE | /usuarios/:id | Próprio usuário ou administrador |
 | GET, POST | /categorias | Autenticado |
@@ -124,8 +103,6 @@ A API não tem uma rota pública para criar administradores. O primeiro administ
 | GET, PUT, DELETE | /orcamentos/:id | Autenticado; proprietário ou administrador |
 | GET, POST | /faturas | Autenticado |
 | GET, PUT, DELETE | /faturas/:id | Autenticado; proprietário ou administrador |
-
-Na recuperação de senha, configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS e SMTP_FROM, além de APP_RESET_PASSWORD_URL. PASSWORD_RESET_SECRET deve ser uma chave aleatória longa, diferente da senha do banco. O link expira em 30 minutos, só pode ser usado uma vez e pode ser solicitado novamente após um minuto. As respostas de solicitação não informam se o e-mail existe.
 
 As listagens podem ser filtradas por usuarioId quando chamadas por um administrador. Usuários comuns veem apenas os próprios registros. Cartões e categorias associados a transações, orçamentos e faturas devem pertencer ao mesmo usuário do registro.
 

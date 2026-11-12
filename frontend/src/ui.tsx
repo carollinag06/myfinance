@@ -1,4 +1,3 @@
-// Fornece componentes visuais reutilizáveis para as telas do app.
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {

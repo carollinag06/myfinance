@@ -1,4 +1,3 @@
-// Calcula e apresenta os resumos e comparações financeiras mensais.
 import { paymentLabel } from '../../src/transactions';
 import { isRealized } from '../../src/transactions';
 import { Ionicons } from '@expo/vector-icons';

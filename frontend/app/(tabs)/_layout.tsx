@@ -1,14 +1,10 @@
-// Configura a navegação e o layout compartilhado desta seção.
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, router } from 'expo-router';
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../src/theme';
 
 export default function TabLayout() {
-  const insets = useSafeAreaInsets();
-
   return (
     <Tabs
       screenOptions={{
@@ -23,9 +19,9 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 68 + insets.bottom,
+          height: 68,
           paddingTop: 7,
-          paddingBottom: 8 + insets.bottom,
+          paddingBottom: 8,
         },
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
       }}

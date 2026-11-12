@@ -1,4 +1,3 @@
-// Carrega as configurações, conecta ao banco e inicia o servidor HTTP.
 require('dotenv').config();
 const app = require('./app');
 const { sequelize } = require('./models');
@@ -16,12 +15,11 @@ async function iniciarServidor() {
     // Atualizacao aditiva para bancos que ja existiam antes do campo status.
     const fs = require('fs');
     const path = require('path');
+    await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261019_add_analysis_and_installments.sql'), 'utf8'));
     await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261022_add_transaction_status.sql'), 'utf8'));
 
     await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261022_add_payment_method.sql'), 'utf8'));
     await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261023_add_google_sub.sql'), 'utf8'));
-    await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261112_add_password_reset_tokens.sql'), 'utf8'));
-    await sequelize.query(fs.readFileSync(path.join(__dirname, '../database/migrations/20261112_expand_user_photo_url.sql'), 'utf8'));
 
     server = app.listen(PORT);
     await new Promise((resolve, reject) => {

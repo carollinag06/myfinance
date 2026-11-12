@@ -1,14 +1,13 @@
-// Gerencia contas, autenticação, perfis e recuperação de senha.
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const fs = require('fs/promises');
 const path = require('path');
 require('dotenv').config();
+const Usuario = require('../models/Usuario');
 const { gerarHash, compararSenha } = require('../hash');
-const { sequelize, Usuario, PasswordResetToken } = require('../models');
+const { sequelize } = require('../models');
 const { ensureDefaultCategories } = require('../services/defaultCategories');
-const { emailConfigurado, enviarLinkRecuperacao } = require('../services/email');
 const googleClient = new OAuth2Client();
 
 const normalizarEmail = (email) => typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -20,120 +19,6 @@ const buscarPorEmail = (email) => Usuario.findOne({
 const dadosPublicos = (usuario) => {
   const { senha, googleSub, ...dados } = usuario.toJSON();
   return dados;
-};
-
-const fotoGoogleValida = (value) => {
-  if (typeof value !== 'string') return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && /(^|\.)googleusercontent\.com$/i.test(url.hostname)
-      ? url.toString()
-      : null;
-  } catch {
-    return null;
-  }
-};
-
-const mensagemSolicitacaoRecuperacao = 'Se existir uma conta com esse e-mail, enviaremos um link de recuperação.';
-const mensagemLinkInvalido = 'Link de recuperação inválido ou expirado. Solicite um novo link e tente novamente.';
-
-const hashTokenRecuperacao = (usuarioId, token) => crypto
-  .createHmac('sha256', process.env.PASSWORD_RESET_SECRET || process.env.JWT_SECRET)
-  .update(`${usuarioId}:${token}`)
-  .digest('hex');
-
-const solicitarRecuperacaoSenha = async (req, res) => {
-  try {
-    const email = normalizarEmail(req.body?.email);
-    if (!emailValido(email)) {
-      return res.status(400).json({ error: 'Informe um endereço de e-mail válido.' });
-    }
-    if (!emailConfigurado() || !(process.env.PASSWORD_RESET_SECRET || process.env.JWT_SECRET)) {
-      return res.status(503).json({ error: 'A recuperação de senha não está disponível agora. Tente novamente mais tarde.' });
-    }
-
-    const usuario = await buscarPorEmail(email);
-    if (usuario && !usuario.googleSub) {
-      const agora = new Date();
-      const existente = await PasswordResetToken.findByPk(usuario.id);
-      const cooldownAtivo = existente && agora.getTime() - new Date(existente.solicitadoEm).getTime() < 60_000;
-
-      if (!cooldownAtivo) {
-        const token = crypto.randomBytes(32).toString('hex');
-        await PasswordResetToken.upsert({
-          usuarioId: usuario.id,
-          tokenHash: hashTokenRecuperacao(usuario.id, token),
-          expiresAt: new Date(agora.getTime() + 30 * 60_000),
-          solicitadoEm: agora
-        });
-
-        try {
-          const resetUrl = new URL(process.env.APP_RESET_PASSWORD_URL || 'myfinance:///redefinir-senha');
-          resetUrl.searchParams.set('email', email);
-          resetUrl.searchParams.set('token', token);
-          await enviarLinkRecuperacao(email, resetUrl.toString());
-        } catch (error) {
-          await PasswordResetToken.destroy({ where: { usuarioId: usuario.id } });
-          console.error('Falha ao enviar link de recuperação:', error.name, error.message);
-        }
-      }
-    }
-
-    return res.status(200).json({ mensagem: mensagemSolicitacaoRecuperacao });
-  } catch (error) {
-    console.error('Falha ao solicitar recuperação de senha:', error.name, error.message);
-    return res.status(500).json({ error: 'Não foi possível solicitar a recuperação agora.' });
-  }
-};
-
-const redefinirSenha = async (req, res) => {
-  try {
-    const email = normalizarEmail(req.body?.email);
-    const token = req.body?.token;
-    const novaSenha = req.body?.novaSenha;
-    if (!emailValido(email) || typeof token !== 'string' || !/^[a-f\d]{64}$/i.test(token)) {
-      return res.status(400).json({ error: mensagemLinkInvalido });
-    }
-    if (typeof novaSenha !== 'string' || novaSenha.length < 8 || Buffer.byteLength(novaSenha, 'utf8') > 72) {
-      return res.status(400).json({ error: 'A nova senha deve ter pelo menos 8 caracteres e não pode exceder 72 bytes.' });
-    }
-
-    const usuario = await buscarPorEmail(email);
-    if (!usuario || usuario.googleSub) {
-      return res.status(400).json({ error: mensagemLinkInvalido });
-    }
-
-    const redefinida = await sequelize.transaction(async (transaction) => {
-      const recuperacao = await PasswordResetToken.findByPk(usuario.id, {
-        transaction,
-        lock: transaction.LOCK.UPDATE
-      });
-      if (!recuperacao) return false;
-
-      const expirou = new Date(recuperacao.expiresAt).getTime() <= Date.now();
-      if (expirou) {
-        await recuperacao.destroy({ transaction });
-        return false;
-      }
-
-      const esperado = Buffer.from(String(recuperacao.tokenHash).trim(), 'hex');
-      const informado = Buffer.from(hashTokenRecuperacao(usuario.id, token), 'hex');
-      if (esperado.length !== informado.length || !crypto.timingSafeEqual(esperado, informado)) {
-        return false;
-      }
-
-      usuario.senha = await gerarHash(novaSenha);
-      await usuario.save({ transaction });
-      await recuperacao.destroy({ transaction });
-      return true;
-    });
-
-    if (!redefinida) return res.status(400).json({ error: mensagemLinkInvalido });
-    return res.status(200).json({ mensagem: 'Senha redefinida. Entre novamente com sua nova senha.' });
-  } catch (error) {
-    console.error('Falha ao redefinir senha:', error.name, error.message);
-    return res.status(500).json({ error: 'Não foi possível redefinir a senha agora.' });
-  }
 };
 
 const criarUsuario = async (req, res) => {
@@ -383,7 +268,6 @@ const loginGoogle = async (req, res) => {
     if (!profile?.sub || profile.email_verified !== true || !emailValido(email)) {
       return res.status(401).json({ error: 'Conta Google sem e-mail verificado.' });
     }
-    const fotoGoogle = fotoGoogleValida(profile.picture);
 
     let usuario = await Usuario.findOne({ where: { googleSub: profile.sub } });
     if (!usuario) {
@@ -396,19 +280,11 @@ const loginGoogle = async (req, res) => {
           email,
           senha: await gerarHash(crypto.randomBytes(32).toString('hex')),
           googleSub: profile.sub,
-          foto: fotoGoogle,
           tipoUsuario: 'usuario'
         }, { transaction });
         await ensureDefaultCategories(created.id, transaction);
         return created;
       });
-    }
-
-    if (fotoGoogle && (!usuario.foto || fotoGoogleValida(usuario.foto))) {
-      if (usuario.foto !== fotoGoogle) {
-        usuario.foto = fotoGoogle;
-        await usuario.save({ fields: ['foto'] });
-      }
     }
 
     const token = jwt.sign({ id: usuario.id, nome: usuario.nome, email: usuario.email, tipoUsuario: usuario.tipoUsuario }, process.env.JWT_SECRET, {
@@ -429,8 +305,6 @@ module.exports = {
   buscarUsuarioPorId,
   atualizarUsuario,
   alterarSenha,
-  solicitarRecuperacaoSenha,
-  redefinirSenha,
   deletarUsuario,
   login,
   loginGoogle

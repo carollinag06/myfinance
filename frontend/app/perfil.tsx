@@ -1,4 +1,3 @@
-// Gerencia os dados do perfil, a foto, a senha e o encerramento da sessão.
 import { confirmAction } from '../src/feedback';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';

@@ -1,4 +1,3 @@
-// Registra as rotas HTTP relacionadas às contas de usuário.
 const { Router } = require('express');
 const fotoUpload = require('../middleware/fotoUpload');
 const { autenticar, verificarAdmin, verificarProprietario } = require('../middleware/auth');
@@ -8,8 +7,6 @@ const {
   buscarUsuarioPorId,
   atualizarUsuario,
   alterarSenha,
-  solicitarRecuperacaoSenha,
-  redefinirSenha,
   deletarUsuario,
   login,
   loginGoogle
@@ -20,8 +17,6 @@ const router = Router();
 router.post('/', fotoUpload, criarUsuario);
 router.post('/login', login);
 router.post('/google', loginGoogle);
-router.post('/solicitar-recuperacao', solicitarRecuperacaoSenha);
-router.post('/redefinir-senha', redefinirSenha);
 
 router.use(autenticar);
 

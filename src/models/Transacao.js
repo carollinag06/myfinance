@@ -1,4 +1,3 @@
-// Define os campos e as relações do modelo de transação.
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 

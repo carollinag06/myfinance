@@ -1,4 +1,3 @@
-// Gerencia a criação e a edição de transações e parcelas.
 import { showSuccess } from '../src/feedback';
 import { transactionStatus } from '../src/transactions';
 import { DateField } from '../src/DateField';
@@ -7,9 +6,7 @@ import { useFocusEffect, useLocalSearchParams, router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { api, Cartao, Categoria, Transacao, toAmount } from '../src/api';
-import { MoneyField } from '../src/MoneyField';
 import { localDateISO } from '../src/date';
-import { formatCurrencyValue, parseCurrencyInput } from '../src/money';
 import { Field, InlineNotice, PrimaryButton, Screen, LoadingState } from '../src/ui';
 import { colors } from '../src/theme';
 
@@ -40,11 +37,6 @@ export default function NewTransactionScreen() {
   const [parcelada, setParcelada] = useState(false);
   const [totalParcelas, setTotalParcelas] = useState('3');
   const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryDescription, setNewCategoryDescription] = useState('');
-  const [categoryError, setCategoryError] = useState('');
-  const [categoryLoading, setCategoryLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'a_vista' | 'cartao'>('a_vista');
   const [cardId, setCardId] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -62,7 +54,7 @@ export default function NewTransactionScreen() {
         setCategories(categoryList);
         setCards(cardList);
         if (transaction) {
-          setDescription(transaction.descricao); setAmount(formatCurrencyValue(toAmount(transaction.valor)));
+          setDescription(transaction.descricao); setAmount(String(toAmount(transaction.valor)));
           setDate(transaction.data); setType(transaction.tipo); setStatus(transactionStatus(transaction));
           setCategoryId(transaction.categoriaId ?? null); setCardId(transaction.cartaoId ?? null);
           setPaymentMethod(transaction.formaPagamento || (transaction.cartaoId != null ? 'cartao' : 'a_vista'));
@@ -76,38 +68,10 @@ export default function NewTransactionScreen() {
     return () => { active = false; };
   }, [id, loadVersion]));
 
-  async function addCategory() {
-    if (categoryLoading) return;
-    if (!newCategoryName.trim()) {
-      setCategoryError('Informe o nome da categoria.');
-      return;
-    }
-    const categoryType = type;
-    setCategoryLoading(true);
-    setCategoryError('');
-    try {
-      const created = await api.post<Categoria>('/categorias', {
-        nome: newCategoryName.trim(),
-        descricao: newCategoryDescription.trim() || null,
-        tipo: categoryType,
-      });
-      setCategories(current => [...current, created]);
-      setCategoryId(created.id);
-      setNewCategoryName('');
-      setNewCategoryDescription('');
-      setShowCategoryForm(false);
-      showSuccess('Categoria cadastrada e selecionada.');
-    } catch (e) {
-      setCategoryError(e instanceof Error ? e.message : 'Não foi possível salvar a categoria.');
-    } finally {
-      setCategoryLoading(false);
-    }
-  }
-
   async function submit() {
     if (loading || formLoading || loadFailed) return;
     setError('');
-    const numericAmount = parseCurrencyInput(amount);
+    const numericAmount = Number(amount.trim().replace(',', '.'));
     const installmentCount = Number(totalParcelas);
     if (!description.trim() || !Number.isFinite(numericAmount) || numericAmount <= 0) {
       setError('Informe uma descrição e um valor maior que zero.');
@@ -162,7 +126,7 @@ export default function NewTransactionScreen() {
         ))}
       </View>
       <Field value={description} onChangeText={setDescription} placeholder="Descrição" maxLength={255} />
-      <MoneyField value={amount} onChangeText={setAmount} placeholder={parcelada ? 'Valor total da compra (R$)' : 'Valor (R$)'} />
+      <Field value={amount} onChangeText={setAmount} placeholder={parcelada ? 'Valor total da compra (R$)' : 'Valor (R$)'} keyboardType="decimal-pad" />
       <DateField value={date} onChange={value => { setDate(value); if (value > localDateISO()) setStatus('previsto'); }} label="Data" />
       {type === 'despesa' && !id ? (
         <View style={{ padding: 13, borderRadius: 15, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: 10 }}>
@@ -202,24 +166,8 @@ export default function NewTransactionScreen() {
               {selected ? <Ionicons name="checkmark" size={15} color={colors.primaryLight} /> : null}
             </Pressable>;
           })}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Cadastrar categoria"
-            accessibilityState={{ expanded: showCategoryForm }}
-            onPress={() => { setShowCategoryForm(current => !current); setCategoryError(''); }}
-            style={({ pressed }) => ({ minHeight: 44, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primaryLight, backgroundColor: colors.surfaceLight, opacity: pressed ? 0.75 : 1 })}
-          >
-            <Ionicons name={showCategoryForm ? 'close-outline' : 'add-circle-outline'} size={18} color={colors.primaryLight} />
-            <Text numberOfLines={1} style={{ color: colors.primaryLight, fontSize: 12, fontWeight: '700' }}>{showCategoryForm ? 'Fechar' : 'Cadastrar categoria'}</Text>
-          </Pressable>
         </ScrollView>
-        {showCategoryForm ? <View style={{ paddingHorizontal: 12, gap: 9 }}>
-          <Text style={{ color: colors.muted, fontSize: 12 }}>Nova categoria de {type === 'despesa' ? 'despesa' : 'receita'}</Text>
-          <Field value={newCategoryName} onChangeText={setNewCategoryName} placeholder="Nome da categoria" maxLength={100} />
-          <Field value={newCategoryDescription} onChangeText={setNewCategoryDescription} placeholder="Descrição (opcional)" maxLength={255} />
-          {categoryError ? <InlineNotice>{categoryError}</InlineNotice> : null}
-          <PrimaryButton label="Salvar categoria" onPress={addCategory} loading={categoryLoading} />
-        </View> : null}
+        {categories.filter(item => item.tipo === type).length === 0 ? <Text style={{ paddingHorizontal: 16, color: colors.muted, fontSize: 11 }}>Cadastre uma categoria em Mais → Categorias.</Text> : null}
       </View>
 
       <View style={{ gap: 6 }}>

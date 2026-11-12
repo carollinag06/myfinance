@@ -1,4 +1,3 @@
-// Centraliza a geração e a verificação de hashes de senha.
 const bcrypt = require('bcrypt');
 
 // Custo do salt (10 é o padrão recomendado para um bom equilíbrio entre segurança e performance)

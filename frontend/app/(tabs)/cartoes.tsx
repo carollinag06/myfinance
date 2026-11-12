@@ -1,4 +1,3 @@
-// Lista os cartões cadastrados e abre seus detalhes para edição.
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, router } from 'expo-router';
 import React, { useCallback, useState } from 'react';

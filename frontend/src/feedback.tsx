@@ -1,4 +1,3 @@
-// Gerencia avisos de sucesso e confirmações exibidos no aplicativo.
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';

@@ -1,4 +1,3 @@
-// Verifica a persistência e a restauração da sessão.
 import { afterAll, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import React from 'react';
 import { Platform } from 'react-native';

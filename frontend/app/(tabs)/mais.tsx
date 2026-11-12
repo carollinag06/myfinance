@@ -1,4 +1,3 @@
-// Apresenta os atalhos para as demais áreas e configurações do app.
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';

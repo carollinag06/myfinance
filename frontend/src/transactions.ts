@@ -1,4 +1,3 @@
-// Agrupa regras compartilhadas para situação e ordenação de transações.
 import type { Transacao } from './api';
 import { localDateISO } from './date';
 

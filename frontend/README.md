@@ -48,7 +48,7 @@ O emulador Android normalmente acessa o computador pelo endereço http://10.0.2.
 
 ## API usada
 
-O app consome POST /usuarios, POST /usuarios/login, POST /usuarios/solicitar-recuperacao, POST /usuarios/redefinir-senha, GET e PUT /usuarios/:id, POST /transacoes/parceladas e as rotas de CRUD de /transacoes, /cartoes, /categorias, /orcamentos e /faturas. Os links de redefinição abrem a rota /redefinir-senha pelo esquema myfinance. As chamadas autenticadas enviam Authorization: Bearer <token>.
+O app consome POST /usuarios, POST /usuarios/login, GET e PUT /usuarios/:id, POST /transacoes/parceladas e as rotas de CRUD de /transacoes, /cartoes, /categorias, /orcamentos e /faturas. As chamadas autenticadas enviam Authorization: Bearer <token>.
 
 Em bancos já existentes, aplique todos os arquivos de `database/migrations/` antes de iniciar a API. A migração `20261019_add_analysis_and_installments.sql` adiciona os tipos e indicadores de categoria e os campos usados para agrupar parcelas.
 

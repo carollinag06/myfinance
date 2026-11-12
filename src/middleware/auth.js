@@ -1,4 +1,3 @@
-// Valida tokens de acesso e controla a autorização das rotas.
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 

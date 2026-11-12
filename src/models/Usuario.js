@@ -1,4 +1,3 @@
-// Define os campos e as validações do modelo de usuário.
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -36,7 +35,7 @@ const Usuario = sequelize.define('Usuario', {
     }
   },
   foto: {
-    type: DataTypes.STRING(1024),
+    type: DataTypes.STRING(255),
     allowNull: true
   }
 }, {

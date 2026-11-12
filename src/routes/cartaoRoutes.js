@@ -1,4 +1,3 @@
-// Registra as rotas HTTP relacionadas aos cartões.
 const { Router } = require('express');
 const { autenticar } = require('../middleware/auth');
 const controller = require('../controllers/cartaoController');

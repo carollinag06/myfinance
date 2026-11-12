@@ -1,4 +1,3 @@
-// Gerencia transações, parcelas e remoção de compras parceladas.
 const crypto = require('crypto');
 const { sequelize, Transacao, Usuario, Categoria, Cartao } = require('../models');
 const createCrudController = require('./crudController');

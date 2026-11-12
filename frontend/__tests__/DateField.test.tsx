@@ -1,4 +1,3 @@
-// Verifica a interação com o seletor de datas.
 import { describe, expect, it, jest } from '@jest/globals';
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';

@@ -1,4 +1,3 @@
-// Verifica a conversão e a formatação de datas.
 import { describe, expect, it } from '@jest/globals';
 import { localDateISO } from '../src/date';
 

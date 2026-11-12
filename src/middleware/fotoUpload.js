@@ -1,4 +1,3 @@
-// Valida e armazena fotos de perfil enviadas para a API.
 const fs = require('fs/promises');
 const multer = require('multer');
 const upload = require('../config/multer');

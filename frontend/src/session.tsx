@@ -1,4 +1,3 @@
-// Mantém a sessão autenticada e expõe as ações de login e logout.
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';

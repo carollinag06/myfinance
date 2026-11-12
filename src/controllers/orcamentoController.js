@@ -1,4 +1,3 @@
-// Define as regras da API para consultar e alterar orçamentos.
 const { Orcamento, Usuario, Categoria } = require('../models');
 const createCrudController = require('./crudController');
 

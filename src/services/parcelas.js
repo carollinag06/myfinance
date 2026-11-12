@@ -1,4 +1,3 @@
-// Calcula datas mensais para os lançamentos parcelados.
 function adicionarMeses(dataISO, quantidade) {
   const [ano, mes, dia] = dataISO.split('-').map(Number);
   const indiceMes = mes - 1 + quantidade;

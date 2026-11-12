@@ -1,4 +1,3 @@
-// Configura a navegação e o layout compartilhado desta seção.
 import { FeedbackHost } from '../src/feedback';
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
@@ -7,7 +6,6 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '../src/session';
 import { colors } from '../src/theme';
 import { LoadingState } from '../src/ui';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function Navigation() {
   const { usuario, pronto } = useAuth();
@@ -20,9 +18,8 @@ function Navigation() {
     if (!currentSegment || currentSegment === 'index') return;
 
     const inAuth = currentSegment === '(auth)';
-    const isRecovery = ['recuperar-senha', 'redefinir-senha'].includes(String(segments[1] || ''));
     if (!usuario && !inAuth) router.replace('/(auth)/login');
-    if (usuario && inAuth && !isRecovery) router.replace('/(tabs)');
+    if (usuario && inAuth) router.replace('/(tabs)');
   }, [usuario, pronto, segments, navigationState?.key]);
 
   if (!pronto) return <LoadingState label="Preparando sua sessão..." />;
@@ -46,11 +43,9 @@ function Navigation() {
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <Navigation />
-        <FeedbackHost />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <AuthProvider>
+      <Navigation />
+      <FeedbackHost />
+    </AuthProvider>
   );
 }

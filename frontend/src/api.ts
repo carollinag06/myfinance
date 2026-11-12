@@ -1,4 +1,3 @@
-// Centraliza os tipos de dados e as chamadas HTTP para a API do MyFinance.
 import { notifyTransactionChange } from './transactionEvents';
 export interface Usuario {
   id: number;
@@ -140,10 +139,6 @@ export const api = {
     request<{ usuario: Usuario; token: string }>('/usuarios/google', 'POST', { idToken }),
   register: (nome: string, email: string, senha: string) =>
     request<Usuario>('/usuarios', 'POST', { nome, email, senha }),
-  solicitarRecuperacao: (email: string) =>
-    request<{ mensagem: string }>('/usuarios/solicitar-recuperacao', 'POST', { email }),
-  redefinirSenha: (email: string, token: string, novaSenha: string) =>
-    request<{ mensagem: string }>('/usuarios/redefinir-senha', 'POST', { email, token, novaSenha }),
 };
 
 export function apiBaseUrl() {
@@ -151,12 +146,7 @@ export function apiBaseUrl() {
 }
 
 export function fotoUsuarioUrl(foto?: string | null) {
-  if (!foto) return null;
-  try {
-    const url = new URL(foto);
-    if (url.protocol === 'https:' && /(^|\.)googleusercontent\.com$/i.test(url.hostname)) return foto;
-  } catch {}
-  return `${API_URL}/uploads/${encodeURIComponent(foto)}`;
+  return foto ? `${API_URL}/uploads/${encodeURIComponent(foto)}` : null;
 }
 
 export function toAmount(value: number | string | null | undefined): number {

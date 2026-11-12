@@ -1,4 +1,3 @@
-// Notifica as telas quando uma transação foi alterada.
 type Listener = () => void;
 const listeners = new Set<Listener>();
 export function subscribeTransactions(listener: Listener) {

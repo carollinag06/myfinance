@@ -1,4 +1,3 @@
-// Define as regras da API para consultar e alterar cartões.
 const { Cartao, Usuario, Transacao, Fatura } = require('../models');
 const createCrudController = require('./crudController');
 

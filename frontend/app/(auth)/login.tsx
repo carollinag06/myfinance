@@ -1,4 +1,3 @@
-// Gerencia a autenticação por senha e pela conta Google.
 import { Ionicons } from '@expo/vector-icons';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
@@ -34,12 +33,8 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const senhaRef = useRef<TextInput>(null);
-  const recoveryHref = email.trim()
-    ? { pathname: '/(auth)/recuperar-senha' as const, params: { email: email.trim() } }
-    : '/(auth)/recuperar-senha' as const;
   const [googleRequest, googleResponse, promptGoogle] = Google.useIdTokenAuthRequest({
     clientId: googleClientId || 'not-configured',
-    scopes: ['openid', 'profile', 'email'],
     selectAccount: true,
   }, { scheme: 'myfinance' });
 
@@ -151,7 +146,6 @@ export default function LoginScreen() {
                 returnKeyType="go"
                 onSubmitEditing={submit}
               />
-              <Link href={recoveryHref} style={styles.forgotLink}>Esqueci minha senha</Link>
               {error ? <InlineNotice>{error}</InlineNotice> : null}
               <PrimaryButton label="Entrar" onPress={submit} loading={loading} />
               <Pressable onPress={submitGoogle} disabled={loading} style={styles.googleButton} accessibilityRole="button" accessibilityLabel="Entrar com Google">
@@ -211,13 +205,6 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 14,
-  },
-  forgotLink: {
-    color: colors.primaryLight,
-    fontSize: 13,
-    fontWeight: '700',
-    alignSelf: 'flex-end',
-    marginTop: -6,
   },
   footer: {
     color: colors.muted,

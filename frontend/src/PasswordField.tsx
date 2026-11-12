@@ -1,4 +1,3 @@
-// Campo de senha com controle para mostrar ou ocultar o conteúdo.
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';

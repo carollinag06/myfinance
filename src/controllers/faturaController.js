@@ -1,4 +1,3 @@
-// Define as regras da API para consultar e alterar faturas.
 const { Fatura, Usuario, Cartao } = require('../models');
 const createCrudController = require('./crudController');
 

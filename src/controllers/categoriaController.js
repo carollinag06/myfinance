@@ -1,4 +1,3 @@
-// Define as regras da API para consultar e alterar categorias.
 const { Categoria, Usuario, Transacao, Orcamento } = require('../models');
 const createCrudController = require('./crudController');
 const { ensureDefaultCategories } = require('../services/defaultCategories');
