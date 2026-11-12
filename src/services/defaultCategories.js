@@ -1,3 +1,4 @@
+// Cria as categorias padrão para cada nova conta.
 const { Categoria } = require('../models');
 const { Op } = require('sequelize');
 

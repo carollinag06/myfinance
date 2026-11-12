@@ -1,3 +1,4 @@
+// Configura o Express, os middlewares e as rotas da API.
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

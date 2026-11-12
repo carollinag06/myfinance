@@ -1,3 +1,4 @@
+// Define as cores usadas para manter a identidade visual consistente.
 export const colors = {
   background: '#0F0F0F',
   surface: '#1A1A1A',

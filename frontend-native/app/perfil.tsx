@@ -1,3 +1,4 @@
+// Gerencia os dados do perfil, a foto, a senha e o encerramento da sessão.
 import { confirmAction } from '../src/feedback';
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { launchImageLibrary, type Asset as ImagePickerAsset } from 'react-native-image-picker';

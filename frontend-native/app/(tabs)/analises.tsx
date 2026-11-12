@@ -1,3 +1,4 @@
+// Calcula e apresenta os resumos e comparações financeiras mensais.
 import { paymentLabel } from '../../src/transactions';
 import { isRealized } from '../../src/transactions';
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';

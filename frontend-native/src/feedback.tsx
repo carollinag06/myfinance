@@ -1,3 +1,4 @@
+// Gerencia avisos de sucesso e confirmações exibidos no aplicativo.
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';

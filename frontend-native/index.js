@@ -1,3 +1,4 @@
+// Registra a inicialização do aplicativo React Native.
 /**
  * @format
  */

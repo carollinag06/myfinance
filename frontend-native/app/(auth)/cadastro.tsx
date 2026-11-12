@@ -1,3 +1,4 @@
+// Gerencia o cadastro e as validações iniciais da conta.
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { Link } from '../../src/navigation';
 import React, { useRef, useState } from 'react';

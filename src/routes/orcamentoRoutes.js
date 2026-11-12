@@ -1,3 +1,4 @@
+// Registra as rotas HTTP relacionadas aos orçamentos.
 const { Router } = require('express');
 const { autenticar } = require('../middleware/auth');
 const controller = require('../controllers/orcamentoController');

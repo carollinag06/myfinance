@@ -1,3 +1,4 @@
+// Apresenta os limites mensais e calcula os gastos por categoria.
 import { confirmAction, showSuccess } from '../src/feedback';
 import { isRealized } from '../src/transactions';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,7 +6,9 @@ import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Pressable, Text, View, type DimensionValue } from 'react-native';
 import { api, Categoria, Orcamento, toAmount, Transacao } from '../src/api';
+import { MoneyField } from '../src/MoneyField';
 import { colors } from '../src/theme';
+import { parseCurrencyInput } from '../src/money';
 import { Field, InlineNotice, LoadingState, Panel, PrimaryButton, Screen } from '../src/ui';
 
 const currency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -86,7 +89,7 @@ export default function BudgetsScreen() {
 
   async function add() {
     if (loading) return;
-    const value = Number(amount.trim().replace(',', '.'));
+    const value = parseCurrencyInput(amount);
     const m = Number(month);
     const y = Number(year);
     if (!Number.isFinite(value) || value <= 0 || !Number.isInteger(m) || m < 1 || m > 12 || !Number.isInteger(y) || y < 1900 || y > 9999) {
@@ -134,7 +137,7 @@ export default function BudgetsScreen() {
       </View>
       {showForm ? (
         <Panel>
-          <Field value={amount} onChangeText={setAmount} placeholder="Limite (R$)" keyboardType="decimal-pad" />
+          <MoneyField value={amount} onChangeText={setAmount} placeholder="Limite (R$)" />
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Field value={month} onChangeText={setMonth} placeholder="Mês (1–12)" keyboardType="number-pad" style={{ flex: 1 }} />
             <Field value={year} onChangeText={setYear} placeholder="Ano" keyboardType="number-pad" style={{ flex: 1 }} />

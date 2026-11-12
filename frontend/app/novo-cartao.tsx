@@ -1,7 +1,10 @@
+// Gerencia o cadastro, a edição e a exclusão de cartões.
 import { confirmAction, showSuccess } from '../src/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { api, Cartao, toAmount } from '../src/api';
+import { MoneyField } from '../src/MoneyField';
+import { formatCurrencyValue, parseCurrencyInput } from '../src/money';
 import { Field, InlineNotice, PrimaryButton, Screen } from '../src/ui';
 
 export default function NewCardScreen() {
@@ -22,7 +25,7 @@ export default function NewCardScreen() {
           return;
         }
         setName(card.nome);
-        setLimit(String(toAmount(card.limite)));
+        setLimit(formatCurrencyValue(toAmount(card.limite)));
         setDueDay(card.vencimento ? String(card.vencimento) : '');
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Não foi possível carregar o cartão.'));
@@ -31,7 +34,7 @@ export default function NewCardScreen() {
   async function save() {
     if (loading) return;
     setError('');
-    const value = Number(limit.trim().replace(',', '.'));
+    const value = parseCurrencyInput(limit);
     const day = dueDay.trim() ? Number(dueDay) : null;
     if (!name.trim() || !Number.isFinite(value) || value < 0) {
       setError('Informe o nome e um limite válido.');
@@ -67,7 +70,7 @@ export default function NewCardScreen() {
   return (
     <Screen title={id ? 'Editar cartão' : 'Novo cartão'} subtitle="Cadastre o apelido, limite e vencimento. Não informe o número completo do cartão.">
       <Field value={name} onChangeText={setName} placeholder="Nome do cartão" maxLength={100} />
-      <Field value={limit} onChangeText={setLimit} placeholder="Limite (R$)" keyboardType="decimal-pad" />
+      <MoneyField value={limit} onChangeText={setLimit} placeholder="Limite (R$)" />
       <Field value={dueDay} onChangeText={setDueDay} placeholder="Dia do vencimento (opcional)" keyboardType="number-pad" />
       {error ? <InlineNotice>{error}</InlineNotice> : null}
       <PrimaryButton label={id ? 'Salvar alterações' : 'Adicionar cartão'} onPress={save} loading={loading} />

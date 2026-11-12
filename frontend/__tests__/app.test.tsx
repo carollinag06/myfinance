@@ -1,3 +1,4 @@
+// Verifica comportamentos observáveis do aplicativo e suas telas.
 import { notifyTransactionChange } from '../src/transactionEvents';
 import { FeedbackHost, dismissFeedback } from '../src/feedback';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';

@@ -1,4 +1,5 @@
 
+// Configura a conexão do Sequelize com o banco de dados.
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
@@ -15,3 +16,4 @@ const sequelize = new Sequelize(
 );
 
 module.exports = sequelize;
+// Configura a conexão do Sequelize com o banco de dados.

@@ -1,3 +1,4 @@
+// Reúne conversões de datas sem perder o dia por causa do fuso horário.
 export function localDateISO(date = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

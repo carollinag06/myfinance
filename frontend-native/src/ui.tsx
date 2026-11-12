@@ -1,3 +1,4 @@
+// Fornece componentes visuais reutilizáveis para as telas do app.
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import React from 'react';
 import {

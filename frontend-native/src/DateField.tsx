@@ -1,3 +1,4 @@
+// Componente de seleção de data compartilhado pelos formulários.
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';

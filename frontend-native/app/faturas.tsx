@@ -1,3 +1,4 @@
+// Apresenta as faturas e permite cadastrar, pagar ou excluir registros.
 import { confirmAction, showSuccess } from '../src/feedback';
 import { DateField } from '../src/DateField';
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
@@ -5,9 +6,11 @@ import { useFocusEffect } from '../src/navigation';
 import React, { useCallback, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { api, Cartao, Fatura, toAmount } from '../src/api';
+import { MoneyField } from '../src/MoneyField';
 import { formatDateBR, localDateISO } from '../src/date';
+import { parseCurrencyInput } from '../src/money';
 import { colors } from '../src/theme';
-import { Field, InlineNotice, LoadingState, Panel, PrimaryButton, Screen } from '../src/ui';
+import { InlineNotice, LoadingState, Panel, PrimaryButton, Screen } from '../src/ui';
 
 const currency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -43,7 +46,7 @@ export default function InvoicesScreen() {
 
   async function add() {
     if (loading) return;
-    const value = Number(amount.trim().replace(',', '.'));
+    const value = parseCurrencyInput(amount);
     if (!Number.isFinite(value) || value <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(due)) {
       setError('Informe um valor válido e selecione o vencimento no calendário.');
       return;
@@ -90,7 +93,7 @@ export default function InvoicesScreen() {
       <PrimaryButton disabled={loading} label={showForm ? 'Fechar formulário' : 'Nova fatura'} icon={showForm ? 'close' : 'add'} onPress={() => setShowForm(!showForm)} />
       {showForm ? (
         <Panel>
-          <Field value={amount} onChangeText={setAmount} placeholder="Valor (R$)" keyboardType="decimal-pad" />
+          <MoneyField value={amount} onChangeText={setAmount} placeholder="Valor (R$)" />
           <DateField value={due} onChange={setDue} label="Vencimento" />
           {cards.length > 0 ? (
             <>

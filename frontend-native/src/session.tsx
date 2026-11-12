@@ -1,3 +1,4 @@
+// Mantém a sessão autenticada e expõe as ações de login e logout.
 import * as Keychain from 'react-native-keychain';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, setAccessToken, Usuario } from './api';

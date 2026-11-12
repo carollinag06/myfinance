@@ -1,3 +1,4 @@
+// Gerencia a autenticação por senha e pela conta Google.
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Link } from '../../src/navigation';
@@ -18,7 +19,7 @@ import { useAuth } from '../../src/session';
 import { colors } from '../../src/theme';
 import { GOOGLE_WEB_CLIENT_ID } from '../../src/config';
 
-if (GOOGLE_WEB_CLIENT_ID) GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
+if (GOOGLE_WEB_CLIENT_ID) GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID, scopes: ['profile', 'email'] });
 
 export default function LoginScreen() {
   const { entrar, entrarComGoogle } = useAuth();
@@ -27,6 +28,9 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const senhaRef = useRef<TextInput>(null);
+  const recoveryHref = email.trim()
+    ? `/(auth)/recuperar-senha?email=${encodeURIComponent(email.trim())}`
+    : '/(auth)/recuperar-senha';
   async function submitGoogle() {
     if (loading) return;
     setError('');
@@ -119,6 +123,7 @@ export default function LoginScreen() {
                 returnKeyType="go"
                 onSubmitEditing={submit}
               />
+              <Link href={recoveryHref} style={styles.forgotLink}>Esqueci minha senha</Link>
               {error ? <InlineNotice>{error}</InlineNotice> : null}
               <PrimaryButton label="Entrar" onPress={submit} loading={loading} />
               <Pressable onPress={submitGoogle} disabled={loading} style={styles.googleButton} accessibilityRole="button" accessibilityLabel="Entrar com Google">
@@ -178,6 +183,13 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 14,
+  },
+  forgotLink: {
+    color: colors.primaryLight,
+    fontSize: 13,
+    fontWeight: '700',
+    alignSelf: 'flex-end',
+    marginTop: -6,
   },
   footer: {
     color: colors.muted,

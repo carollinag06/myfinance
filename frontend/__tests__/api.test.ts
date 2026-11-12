@@ -1,3 +1,4 @@
+// Verifica a construção das chamadas HTTP e o tratamento de respostas.
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { api, apiBaseUrl, fotoUsuarioUrl, setAccessToken, toAmount } from '../src/api';
 

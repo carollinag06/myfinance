@@ -1,3 +1,4 @@
+// Verifica a inicialização e a navegação principal do app nativo.
 /**
  * @format
  */

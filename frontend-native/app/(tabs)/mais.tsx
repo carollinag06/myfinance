@@ -1,3 +1,4 @@
+// Apresenta os atalhos para as demais áreas e configurações do app.
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { router } from '../../src/navigation';
 import React from 'react';

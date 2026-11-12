@@ -1,3 +1,4 @@
+// Configura o recebimento e a validação inicial de arquivos enviados.
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');

@@ -1,3 +1,4 @@
+// Registra as rotas HTTP relacionadas às faturas.
 const { Router } = require('express');
 const { autenticar } = require('../middleware/auth');
 const controller = require('../controllers/faturaController');

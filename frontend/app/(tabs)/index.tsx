@@ -1,3 +1,4 @@
+// Define a tela inicial ou o ponto de entrada do aplicativo.
 import { subscribeTransactions } from '../../src/transactionEvents';
 import { newestCreatedFirst } from '../../src/transactions';
 import { paymentLabel } from '../../src/transactions';

@@ -1,3 +1,4 @@
+// Lista os cartões cadastrados e abre seus detalhes para edição.
 import { Ionicons } from '@react-native-vector-icons/ionicons/static';
 import { useFocusEffect, router } from '../../src/navigation';
 import React, { useCallback, useState } from 'react';

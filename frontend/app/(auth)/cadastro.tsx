@@ -1,3 +1,4 @@
+// Gerencia o cadastro e as validações iniciais da conta.
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import React, { useRef, useState } from 'react';

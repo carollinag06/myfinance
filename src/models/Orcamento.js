@@ -1,3 +1,4 @@
+// Define os campos e as validações do modelo de orçamento.
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 

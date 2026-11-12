@@ -1,3 +1,4 @@
+// Cria operações CRUD com validação de propriedade dos registros.
 const createCrudController = ({ model, resourceName, fields, include = [], ownershipRelations = [], preparePayload = (payload) => payload }) => {
   const getPayload = (body) => Object.fromEntries(
     Object.entries(body || {}).filter(([key, value]) => fields.includes(key) && value !== undefined)

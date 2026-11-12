@@ -1,3 +1,4 @@
+// Verifica os principais fluxos da API e suas regras de negócio.
 const { after, before, test } = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');

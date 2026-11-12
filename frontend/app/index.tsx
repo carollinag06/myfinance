@@ -1,3 +1,4 @@
+// Define a tela inicial ou o ponto de entrada do aplicativo.
 import React from 'react';
 import { Redirect } from 'expo-router';
 import { useAuth } from '../src/session';
