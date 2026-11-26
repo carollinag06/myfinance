@@ -13,6 +13,11 @@ interface AuthContextValue {
   pronto: boolean;
   entrar: (email: string, senha: string) => Promise<void>;
   entrarComGoogle: (idToken: string) => Promise<void>;
+  /** Identificador da etapa de código pendente (login em duas etapas). */
+  desafio: string | null;
+  confirmarCodigo: (codigo: string) => Promise<void>;
+  reenviarCodigo: () => Promise<void>;
+  cancelarCodigo: () => void;
   cadastrar: (nome: string, email: string, senha: string) => Promise<void>;
   sair: () => Promise<void>;
   atualizarUsuario: (usuario: Usuario) => Promise<void>;
@@ -42,6 +47,7 @@ async function writeSession(value: string | null) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [pronto, setPronto] = useState(false);
+  const [desafio, setDesafio] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -64,11 +70,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const entrar = useCallback(async (email: string, senha: string) => {
-    const session = await api.login(email.trim().toLowerCase(), senha);
+    // A senha correta não abre a sessão: o servidor envia um código por e-mail.
+    const resposta = await api.login(email.trim().toLowerCase(), senha);
+    setDesafio(resposta.desafioId);
+  }, []);
+
+  const confirmarCodigo = useCallback(async (codigo: string) => {
+    if (!desafio) throw new Error('Entre novamente para receber um código.');
+    let session;
+    try {
+      session = await api.verificarCodigoLogin(desafio, codigo);
+    } catch (e) {
+      // Código expirado ou bloqueado: volta para a senha.
+      if (e instanceof Error && /Entre novamente/.test(e.message)) setDesafio(null);
+      throw e;
+    }
     await writeSession(JSON.stringify(session));
     setAccessToken(session.token);
+    setDesafio(null);
     setUsuario(session.usuario);
-  }, []);
+  }, [desafio]);
+
+  const reenviarCodigo = useCallback(async () => {
+    if (!desafio) throw new Error('Entre novamente para receber um código.');
+    await api.reenviarCodigoLogin(desafio);
+  }, [desafio]);
+
+  const cancelarCodigo = useCallback(() => setDesafio(null), []);
 
   const entrarComGoogle = useCallback(async (idToken: string) => {
     const session = await api.loginGoogle(idToken);
@@ -83,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [entrar]);
 
   const sair = useCallback(async () => {
+    setDesafio(null);
     setAccessToken(null);
     setUsuario(null);
     await writeSession(null);
@@ -105,7 +134,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     cadastrar,
     sair,
     atualizarUsuario,
-  }), [usuario, pronto, entrar, entrarComGoogle, cadastrar, sair, atualizarUsuario]);
+    desafio,
+    confirmarCodigo,
+    reenviarCodigo,
+    cancelarCodigo,
+  }), [usuario, pronto, entrar, entrarComGoogle, cadastrar, sair, atualizarUsuario, desafio, confirmarCodigo, reenviarCodigo, cancelarCodigo]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

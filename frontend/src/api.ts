@@ -134,7 +134,11 @@ export const api = {
   putMultipart: <T,>(path: string, body: FormData) => requestMultipart<T>(path, 'PUT', body),
   delete: <T,>(path: string) => request<T>(path, 'DELETE'),
   login: (email: string, senha: string) =>
-    request<{ usuario: Usuario; token: string }>('/usuarios/login', 'POST', { email, senha }),
+    request<{ codigoNecessario: true; desafioId: string; expiraEm: number }>('/usuarios/login', 'POST', { email, senha }),
+  verificarCodigoLogin: (desafioId: string, codigo: string) =>
+    request<{ usuario: Usuario; token: string }>('/usuarios/verificar-codigo-login', 'POST', { desafioId, codigo }),
+  reenviarCodigoLogin: (desafioId: string) =>
+    request<{ mensagem: string; expiraEm: number }>('/usuarios/reenviar-codigo-login', 'POST', { desafioId }),
   loginGoogle: (idToken: string) =>
     request<{ usuario: Usuario; token: string }>('/usuarios/google', 'POST', { idToken }),
   register: (nome: string, email: string, senha: string) =>
@@ -146,7 +150,10 @@ export function apiBaseUrl() {
 }
 
 export function fotoUsuarioUrl(foto?: string | null) {
-  return foto ? `${API_URL}/uploads/${encodeURIComponent(foto)}` : null;
+  if (!foto) return null;
+  // Foto do Google (URL completa) ou arquivo enviado para /uploads.
+  if (/^https:\/\//i.test(foto)) return foto;
+  return `${API_URL}/uploads/${encodeURIComponent(foto)}`;
 }
 
 export function toAmount(value: number | string | null | undefined): number {

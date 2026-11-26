@@ -51,17 +51,9 @@ Na inicialização, a aplicação autentica no PostgreSQL, sincroniza os modelos
 
 ### Login com Google
 
-O aplicativo Android nativo fica em `frontend-native/`. Registre um cliente
-Android com pacote `com.myfinance.finapp` e o SHA-1 da assinatura do APK.
-Crie também um cliente OAuth do tipo Aplicativo da Web no mesmo projeto Google
-Cloud e coloque seu ID em `frontend-native/src/config.ts` como
-`GOOGLE_WEB_CLIENT_ID`. Para esse uso nativo, os campos de origem JavaScript e
-URI de redirecionamento do cliente Web podem ficar vazios.
-
 O app Expo em `frontend/` usa o cliente Android em dispositivos Android e o
-cliente Web no navegador, configurados em `frontend/.env`. No app nativo CLI, o
-Web Client ID é usado para solicitar o `idToken`. Portanto, o allowlist do
-backend precisa conter ambos os IDs para aceitar tokens dos dois apps.
+cliente Web no navegador, configurados em `frontend/.env`. O allowlist do
+backend (`GOOGLE_CLIENT_IDS`) precisa conter esses IDs.
 
 No `.env` da API, inclua os dois IDs, separados por vírgula:
 
@@ -119,15 +111,15 @@ As listagens podem ser filtradas por usuarioId quando chamadas por um administra
 
 ## Observações
 
-Execute `npm test` na raiz para verificar a API. O aplicativo Android pode ser compilado em `frontend-native/android` com `gradlew.bat assembleDebug`.
+Execute `npm test` na raiz para verificar a API. Para o aplicativo, rode `npm test` em `frontend/`.
 
 ## Aplicativo mobile
 
-O aplicativo Android em React Native CLI fica em `frontend-native/`. Consulte `frontend-native/README.md` para a configuração detalhada. Para iniciar:
+O aplicativo fica em `frontend/` e usa Expo. Consulte `frontend/README.md` para a configuração detalhada. Para iniciar:
 
 1. Inicie a API na raiz do projeto com `npm start`.
-2. Entre em `frontend-native/`, ajuste `API_BASE_URL` em `src/config.ts` e rode `npm install`.
-3. Rode `npm start` e, em outro terminal, `npm run android`.
+2. Entre em `frontend/`, copie `.env.example` para `.env`, ajuste `EXPO_PUBLIC_API_URL` e rode `npm install`.
+3. Rode `npm start` e abra pelo Expo Go ou no emulador.
 
 O aplicativo inclui login e cadastro, resumo financeiro, análises mensais, extrato com busca e filtros, lançamentos parcelados, cartões, categorias padrão, metas/orçamentos e faturas.
 

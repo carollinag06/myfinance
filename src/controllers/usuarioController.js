@@ -8,6 +8,7 @@ const Usuario = require('../models/Usuario');
 const { gerarHash, compararSenha } = require('../hash');
 const { sequelize } = require('../models');
 const { ensureDefaultCategories } = require('../services/defaultCategories');
+const codigoLogin = require('../services/codigoLogin');
 const googleClient = new OAuth2Client();
 
 const normalizarEmail = (email) => typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -228,23 +229,70 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Email ou senha invalidos' });
     }
 
-    await ensureDefaultCategories(usuario.id);
-
-    const payload = {
-      id: usuario.id,
-      nome: usuario.nome,
-      email: usuario.email,
-      tipoUsuario: usuario.tipoUsuario
-    };
-
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
-    });
-
-    return res.status(200).json({ usuario: dadosPublicos(usuario), token });
+    // Segunda etapa: o código vai para o e-mail salvo no banco, nunca para um e-mail vindo do cliente.
+    if (!codigoLogin.smtpConfigurado()) {
+      return res.status(503).json({ error: 'Envio de e-mail não configurado no servidor.' });
+    }
+    try {
+      const { desafioId, expiraEm } = await codigoLogin.iniciar(usuario);
+      return res.status(202).json({ codigoNecessario: true, desafioId, expiraEm });
+    } catch (error) {
+      console.error('Falha ao enviar código de login:', error.name);
+      return res.status(503).json({ error: 'Não foi possível enviar o código agora. Tente novamente.' });
+    }
   } catch (error) {
     console.error('Falha ao realizar login:', error.name, error.message);
     return res.status(500).json({ error: 'Erro ao realizar login', detalhes: error.message });
+  }
+};
+
+const emitirSessao = async (usuario) => {
+  await ensureDefaultCategories(usuario.id);
+  const payload = { id: usuario.id, nome: usuario.nome, email: usuario.email, tipoUsuario: usuario.tipoUsuario };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+  return { usuario: dadosPublicos(usuario), token };
+};
+
+const verificarCodigoLogin = async (req, res) => {
+  try {
+    const { desafioId, codigo } = req.body || {};
+    if (typeof desafioId !== 'string' || typeof codigo !== 'string' || !/^\d{6}$/.test(codigo)) {
+      return res.status(400).json({ error: 'Informe o código de 6 dígitos.' });
+    }
+    const resultado = codigoLogin.verificar(desafioId, codigo);
+    if (!resultado.ok) {
+      const corpo = { error: resultado.error };
+      if (resultado.tentativasRestantes !== undefined) corpo.tentativasRestantes = resultado.tentativasRestantes;
+      return res.status(resultado.status).json(corpo);
+    }
+    const usuario = await Usuario.findByPk(resultado.usuarioId);
+    if (!usuario) return res.status(401).json({ error: 'Conta não encontrada. Entre novamente.' });
+    return res.status(200).json(await emitirSessao(usuario));
+  } catch (error) {
+    console.error('Falha ao verificar código de login:', error.name);
+    return res.status(500).json({ error: 'Não foi possível concluir o login agora.' });
+  }
+};
+
+const reenviarCodigoLogin = async (req, res) => {
+  try {
+    const resultado = await codigoLogin.reenviar((req.body || {}).desafioId);
+    if (!resultado.ok) return res.status(resultado.status).json({ error: resultado.error });
+    return res.status(200).json({ mensagem: 'Enviamos um novo código.', expiraEm: resultado.expiraEm });
+  } catch (error) {
+    console.error('Falha ao reenviar código de login:', error.name);
+    return res.status(503).json({ error: 'Não foi possível enviar o código agora. Tente novamente.' });
+  }
+};
+
+// Aceita só a URL de foto do próprio Google (https em *.googleusercontent.com) e que caiba na coluna.
+const fotoGoogleValida = (url) => {
+  if (typeof url !== 'string' || url.length > 255) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && parsed.hostname.endsWith('.googleusercontent.com') ? url : null;
+  } catch {
+    return null;
   }
 };
 
@@ -280,11 +328,16 @@ const loginGoogle = async (req, res) => {
           email,
           senha: await gerarHash(crypto.randomBytes(32).toString('hex')),
           googleSub: profile.sub,
-          tipoUsuario: 'usuario'
+          tipoUsuario: 'usuario',
+          foto: fotoGoogleValida(profile.picture)
         }, { transaction });
         await ensureDefaultCategories(created.id, transaction);
         return created;
       });
+    } else if (!usuario.foto) {
+      // Sem foto enviada pelo usuário: usa a do Google. Uma foto enviada nunca é substituída.
+      const fotoGoogle = fotoGoogleValida(profile.picture);
+      if (fotoGoogle) await usuario.update({ foto: fotoGoogle });
     }
 
     const token = jwt.sign({ id: usuario.id, nome: usuario.nome, email: usuario.email, tipoUsuario: usuario.tipoUsuario }, process.env.JWT_SECRET, {
@@ -307,5 +360,7 @@ module.exports = {
   alterarSenha,
   deletarUsuario,
   login,
+  verificarCodigoLogin,
+  reenviarCodigoLogin,
   loginGoogle
 };

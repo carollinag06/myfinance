@@ -169,11 +169,10 @@ maiores que zero e datas devem usar AAAA-MM-DD.
 
 RODAR O APLICATIVO FRONT-END
 ----------------------------
-O aplicativo Android atual fica em frontend-native/ e usa React Native CLI.
-Instale as dependencias nessa pasta com npm install. Abra um emulador Android
-ou conecte o celular com depuracao USB. Em terminais separados nessa pasta,
-execute npm start e npm run android. Configure a URL da API em
-frontend-native/src/config.ts.
+O aplicativo fica em frontend/ e usa Expo. Copie frontend/.env.example para
+frontend/.env e ajuste EXPO_PUBLIC_API_URL com o endereco da API. Instale as
+dependencias nessa pasta com npm install e execute npm start. Abra no celular
+pelo Expo Go (QR code) ou pressione "a" para abrir no emulador Android.
 
 ACESSO PELO NGROK
 -----------------
@@ -183,19 +182,17 @@ em outro terminal:
   ngrok http 3000
 
 Copie o endereco HTTPS de Forwarding exibido pelo ngrok para a constante
-API_BASE_URL em frontend-native/src/config.ts.
+EXPO_PUBLIC_API_URL em frontend/.env e reinicie o npm start.
 
 O app envia o cabecalho ngrok-skip-browser-warning para evitar a tela
 intersticial do plano gratuito. O endereco pode mudar ao reiniciar o tunel.
-Mantenha API, ngrok e Metro ativos durante o desenvolvimento.
+Mantenha API, ngrok e Expo ativos durante o desenvolvimento.
 
 DIAGNOSTICO RAPIDO
 ------------------
 - Erro de conexao PostgreSQL: confira se o banco/PgBouncer esta iniciado,
   DB_HOST, DB_PORT, DB_NAME, DB_USER e DB_PASS.
-- Aplicativo nao acessa a API: confira API_BASE_URL, a porta 3000 e o ngrok.
-- Falha de build Android: confira Android SDK, JDK e o arquivo
-  frontend-native/android/local.properties.
+- Aplicativo nao acessa a API: confira EXPO_PUBLIC_API_URL, a porta 3000 e o ngrok.
 - Erro ao cadastrar ou entrar: reinicie a API e consulte o terminal; os
   controllers registram o tipo e a mensagem do erro sem imprimir a senha.
 - Nao execute npm audit fix --force sem revisar as atualizacoes: pode causar

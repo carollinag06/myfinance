@@ -53,6 +53,7 @@ describe('API client', () => {
   it('builds encoded photo URLs and treats invalid amounts as zero', () => {
     expect(fotoUsuarioUrl('foto perfil.png')).toBe(`${apiBaseUrl()}/uploads/foto%20perfil.png`);
     expect(fotoUsuarioUrl(null)).toBeNull();
+    expect(fotoUsuarioUrl('https://lh3.googleusercontent.com/a/foto=s96-c')).toBe('https://lh3.googleusercontent.com/a/foto=s96-c');
     expect(toAmount('12.50')).toBe(12.5);
     expect(toAmount('not-a-number')).toBe(0);
     expect(toAmount(Number.POSITIVE_INFINITY)).toBe(0);
