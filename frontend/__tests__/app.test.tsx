@@ -67,6 +67,11 @@ jest.mock('expo-router', () => {
 });
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaProvider: ({ children }: { children: any }) => children,
+  SafeAreaView: ({ children }: { children: any }) => children,
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 24, left: 0 }),
+}));
 jest.mock('expo-status-bar', () => ({ StatusBar: () => null }));
 jest.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),

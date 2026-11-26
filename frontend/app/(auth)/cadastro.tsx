@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { PasswordField } from '../../src/PasswordField';
 import { useAuth } from '../../src/session';
+import { CodigoLoginForm } from '../../src/CodigoLoginForm';
 import { colors } from '../../src/theme';
 import { Field, InlineNotice, PrimaryButton, Screen } from '../../src/ui';
 
@@ -25,7 +26,7 @@ function utf8ByteLength(value: string) {
 }
 
 export default function RegisterScreen() {
-  const { cadastrar } = useAuth();
+  const { cadastrar, desafio } = useAuth();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -98,6 +99,7 @@ export default function RegisterScreen() {
               <Text style={styles.subtitle}>Organize suas finanças em poucos passos.</Text>
             </View>
 
+            {desafio ? <CodigoLoginForm /> : (
             <View style={styles.form}>
               <Field
                 value={nome}
@@ -167,7 +169,7 @@ export default function RegisterScreen() {
                 Já tem conta?{' '}
                 <Link href="/(auth)/login" style={styles.link}>Entrar</Link>
               </Text>
-            </View>
+            </View>)}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

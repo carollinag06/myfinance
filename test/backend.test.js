@@ -7,6 +7,8 @@ const bcrypt = require('bcrypt');
 process.env.JWT_SECRET = 'myfinance-test-secret';
 
 const app = require('../src/app');
+const codigoLogin = require('../src/services/codigoLogin');
+const { OAuth2Client } = require('google-auth-library');
 const models = require('../src/models');
 const { sequelize, Usuario, Categoria, Cartao, Transacao, Orcamento, Fatura } = models;
 const { adicionarMeses } = require('../src/services/parcelas');
@@ -157,19 +159,101 @@ test('registration normalizes the email, assigns a regular role, hashes the pass
   assert.equal(categoryRows.length, DEFAULT_CATEGORIES.length);
 });
 
-test('login returns a signed token and never includes the password hash', async (t) => {
+test('login with correct password sends a code and only the code issues the session token', async (t) => {
   const account = {
     id: user.id, nome: 'Ana', email: 'ana@example.com', tipoUsuario: 'usuario', senha: 'stored-hash',
     toJSON() { return { id: this.id, nome: this.nome, email: this.email, tipoUsuario: this.tipoUsuario, senha: this.senha }; }
   };
+  const sent = [];
   t.after(stub(Usuario, 'findOne', async () => account));
+  t.after(stub(Usuario, 'findByPk', async () => account));
   t.after(stub(bcrypt, 'compare', async () => true));
   t.after(stub(Categoria, 'findAll', async () => DEFAULT_CATEGORIES.map((item, id) => ({ id, ...item, isPadrao: true }))));
+  t.after(stub(codigoLogin.mailer, 'enviar', async (email, nome, codigo) => { sent.push({ email, codigo }); }));
+  t.after(stub(codigoLogin, 'smtpConfigurado', () => true));
 
-  const response = await request(app).post('/usuarios/login').send({ email: ' ANA@EXAMPLE.COM ', senha: 'senha-segura' });
+  const first = await request(app).post('/usuarios/login').send({ email: ' ANA@EXAMPLE.COM ', senha: 'senha-segura' });
+  assert.equal(first.status, 202);
+  assert.equal(first.body.codigoNecessario, true);
+  assert.equal(first.body.token, undefined);
+  assert.equal(JSON.stringify(first.body).includes(sent[0].codigo), false);
+  assert.equal(sent[0].email, 'ana@example.com');
+  assert.match(sent[0].codigo, /^\d{6}$/);
+
+  const wrong = sent[0].codigo === '000000' ? '111111' : '000000';
+  const bad = await request(app).post('/usuarios/verificar-codigo-login').send({ desafioId: first.body.desafioId, codigo: wrong });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.body.tentativasRestantes, 4);
+
+  const ok = await request(app).post('/usuarios/verificar-codigo-login').send({ desafioId: first.body.desafioId, codigo: sent[0].codigo });
+  assert.equal(ok.status, 200);
+  assert.equal(Object.hasOwn(ok.body.usuario, 'senha'), false);
+  assert.equal(jwt.verify(ok.body.token, process.env.JWT_SECRET).id, user.id);
+
+  const reuse = await request(app).post('/usuarios/verificar-codigo-login').send({ desafioId: first.body.desafioId, codigo: sent[0].codigo });
+  assert.equal(reuse.status, 400);
+});
+
+test('login code locks after five wrong attempts and wrong password sends no code', async (t) => {
+  const account = { id: user.id, nome: 'Ana', email: 'ana@example.com', senha: 'h', toJSON() { return {}; } };
+  const sent = [];
+  let passwordOk = false;
+  t.after(stub(Usuario, 'findOne', async () => account));
+  t.after(stub(bcrypt, 'compare', async () => passwordOk));
+  t.after(stub(codigoLogin.mailer, 'enviar', async (email, nome, codigo) => { sent.push(codigo); }));
+  t.after(stub(codigoLogin, 'smtpConfigurado', () => true));
+
+  const denied = await request(app).post('/usuarios/login').send({ email: 'ana@example.com', senha: 'errada' });
+  assert.equal(denied.status, 401);
+  assert.equal(sent.length, 0);
+
+  passwordOk = true;
+  const first = await request(app).post('/usuarios/login').send({ email: 'ana@example.com', senha: 'certa' });
+  const wrong = sent[0] === '000000' ? '111111' : '000000';
+  let last;
+  for (let i = 0; i < 5; i += 1) {
+    last = await request(app).post('/usuarios/verificar-codigo-login').send({ desafioId: first.body.desafioId, codigo: wrong });
+  }
+  assert.equal(last.status, 429);
+  const after5 = await request(app).post('/usuarios/verificar-codigo-login').send({ desafioId: first.body.desafioId, codigo: sent[0] });
+  assert.equal(after5.status, 400);
+});
+
+test('google login fills an empty photo with the Google picture but never replaces an uploaded one', async (t) => {
+  process.env.GOOGLE_CLIENT_IDS = 'client-id';
+  const picture = 'https://lh3.googleusercontent.com/a/foto-ana=s96-c';
+  t.after(stub(OAuth2Client.prototype, 'verifyIdToken', async () => ({
+    getPayload: () => ({ sub: 'g-1', email: 'ana@example.com', email_verified: true, name: 'Ana', picture })
+  })));
+  const updates = [];
+  const account = {
+    id: user.id, nome: 'Ana', email: 'ana@example.com', tipoUsuario: 'usuario', foto: null,
+    async update(data) { updates.push(data); Object.assign(this, data); },
+    toJSON() { return { id: this.id, nome: this.nome, email: this.email, foto: this.foto }; }
+  };
+  t.after(stub(Usuario, 'findOne', async () => account));
+
+  const first = await request(app).post('/usuarios/google').send({ idToken: 'x' });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.usuario.foto, picture);
+
+  account.foto = 'upload-123.jpg';
+  updates.length = 0;
+  const second = await request(app).post('/usuarios/google').send({ idToken: 'x' });
+  assert.equal(second.body.usuario.foto, 'upload-123.jpg');
+  assert.equal(updates.length, 0);
+});
+
+test('google login ignores a picture URL that is not from Google', async (t) => {
+  process.env.GOOGLE_CLIENT_IDS = 'client-id';
+  t.after(stub(OAuth2Client.prototype, 'verifyIdToken', async () => ({
+    getPayload: () => ({ sub: 'g-1', email: 'ana@example.com', email_verified: true, picture: 'https://evil.example.com/x.png' })
+  })));
+  const account = { id: user.id, foto: null, async update() { throw new Error('should not update'); }, toJSON() { return { foto: this.foto }; } };
+  t.after(stub(Usuario, 'findOne', async () => account));
+  const response = await request(app).post('/usuarios/google').send({ idToken: 'x' });
   assert.equal(response.status, 200);
-  assert.equal(Object.hasOwn(response.body.usuario, 'senha'), false);
-  assert.equal(jwt.verify(response.body.token, process.env.JWT_SECRET).id, user.id);
+  assert.equal(response.body.usuario.foto, null);
 });
 
 test('profile update reports duplicate email as a conflict without changing the account', async (t) => {

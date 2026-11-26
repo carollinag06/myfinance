@@ -16,6 +16,7 @@ import {
 import { Field, InlineNotice, PrimaryButton, Screen } from '../../src/ui';
 import { PasswordField } from '../../src/PasswordField';
 import { useAuth } from '../../src/session';
+import { CodigoLoginForm } from '../../src/CodigoLoginForm';
 import { colors } from '../../src/theme';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -27,7 +28,7 @@ const googleClientId = Platform.select({
 });
 
 export default function LoginScreen() {
-  const { entrar, entrarComGoogle } = useAuth();
+  const { entrar, entrarComGoogle, desafio } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
@@ -118,6 +119,7 @@ export default function LoginScreen() {
               <Text style={styles.subtitle}>Seu dinheiro, mais organizado.</Text>
             </View>
 
+            {desafio ? <CodigoLoginForm /> : (
             <View style={styles.form}>
               <Field
                 value={email}
@@ -158,7 +160,7 @@ export default function LoginScreen() {
                   Criar conta
                 </Link>
               </Text>
-            </View>
+            </View>)}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
